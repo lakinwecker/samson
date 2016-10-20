@@ -1,6 +1,8 @@
 [package]
 name = "lwchess"
 version = "0.1.0"
-authors = ["Lakin Wecker <lakin@structuredabstraction.com>"]
+authors = ["Lakin Wecker <lakin@wecker.ca>"]
 
 [dependencies]
+lazy_static = "*"
+
