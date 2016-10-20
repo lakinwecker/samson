@@ -20,18 +20,15 @@
 // Shamelessly patterned after the amazing python-chess library by Niklas Fiekas
 //------------------------------------------------------------------------------
 
-#![feature(plugin, const_fn)]
-#![plugin(phf_macros)]
+#[macro_use]
+extern crate lazy_static;
 
-extern crate phf;
-use std::ops::{BitAnd, Shr, Add, Mul};
-
+use std::collections::HashMap;
 
 enum Color {
     White,
     Black
 }
-const COLOR_NAMES: &'static [&'static str] = &["black", "white"];
 enum PieceTypes {
     Pawn = 1,
     Knight = 2,
@@ -40,21 +37,6 @@ enum PieceTypes {
     Queen = 5,
     King = 6
 }
-const PIECE_SYMBOLS: &'static [&'static str] = &["", "p", "n", "b", "r", "q", "k"];
-const PIECE_NAMES: &'static [&'static str] = &["", "pawn", "knight", "bishop", "rook", "queen", "king"];
-static UNICODE_PIECE_SYMBOLS: phf::Map<&'static str, &'static str> = phf_map! {
-    "R" => "♖", "r" => "♜",
-    "N" => "♘", "n" => "♞",
-    "B" => "♗", "b" => "♝",
-    "Q" => "♕", "q" => "♛",
-    "K" => "♔", "k" => "♚",
-    "P" => "♙", "p" => "♟",
-};
-
-const FILE_NAMES: &'static [&'static str] = &["a", "b", "c", "d", "e", "f", "g", "h"];
-const RANK_NAME: &'static [&'static str] = &["1", "2", "3", "4", "5", "6", "7", "8"];
-const STARTING_FEN: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-const STARTING_BOARD_FEN: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 
 enum STATUS {
     StatusValid = 0,
@@ -69,6 +51,33 @@ enum STATUS {
     StatusBadCastlingRights = 256,
     StatusInvalidEpSquare = 512,
     StatusOppositeCheck = 1024
+}
+
+lazy_static! {
+    static ref COLOR_NAMES: Vec<&'static str> = vec!["black", "white"];
+    static ref PIECE_SYMBOLS: Vec<&'static str> = vec!["", "p", "n", "b", "r", "q", "k"];
+    static ref PIECE_NAMES: Vec<&'static str> = vec!["", "pawn", "knight", "bishop", "rook", "queen", "king"];
+    static ref UNICODE_PIECE_SYMBOLS: HashMap<&'static str, &'static str> = {
+        let mut m = HashMap::new();
+        m.insert("R", "♖");
+		m.insert("r", "♜");
+        m.insert("N", "♘");
+		m.insert("n", "♞");
+        m.insert("B", "♗");
+		m.insert("b", "♝");
+        m.insert("Q", "♕");
+		m.insert("q", "♛");
+        m.insert("K", "♔");
+		m.insert("k", "♚");
+        m.insert("P", "♙");
+		m.insert("p", "♟");
+        m
+    };
+
+    static ref FILE_NAMES: Vec<&'static str> = vec!["a", "b", "c", "d", "e", "f", "g", "h"];
+    static ref RANK_NAME: Vec<&'static str> = vec!["1", "2", "3", "4", "5", "6", "7", "8"];
+    static ref STARTING_FEN: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    static ref STARTING_BOARD_FEN: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 }
 
 const A1: u8 = 0;
@@ -135,38 +144,27 @@ const E8: u8 = 60;
 const F8: u8 = 61;
 const G8: u8 = 62;
 const H8: u8 = 63;
-
 const SQUARES: &'static [u8] = &[
-    A1, B1, C1, D1, E1, F1, G1, H1,
-    A2, B2, C2, D2, E2, F2, G2, H2,
-    A3, B3, C3, D3, E3, F3, G3, H3,
-    A4, B4, C4, D4, E4, F4, G4, H4,
-    A5, B5, C5, D5, E5, F5, G5, H5,
-    A6, B6, C6, D6, E6, F6, G6, H6,
-    A7, B7, C7, D7, E7, F7, G7, H7,
-    A8, B8, C8, D8, E8, F8, G8, H8
+	A1, B1, C1, D1, E1, F1, G1, H1,
+	A2, B2, C2, D2, E2, F2, G2, H2,
+	A3, B3, C3, D3, E3, F3, G3, H3,
+	A4, B4, C4, D4, E4, F4, G4, H4,
+	A5, B5, C5, D5, E5, F5, G5, H5,
+	A6, B6, C6, D6, E6, F6, G6, H6,
+	A7, B7, C7, D7, E7, F7, G7, H7,
+	A8, B8, C8, D8, E8, F8, G8, H8
 ];
 const SQUARES_180: &'static [u8] = &[
-    A8, B8, C8, D8, E8, F8, G8, H8,
-    A7, B7, C7, D7, E7, F7, G7, H7,
-    A6, B6, C6, D6, E6, F6, G6, H6,
-    A5, B5, C5, D5, E5, F5, G5, H5,
-    A4, B4, C4, D4, E4, F4, G4, H4,
-    A3, B3, C3, D3, E3, F3, G3, H3,
-    A2, B2, C2, D2, E2, F2, G2, H2,
-    A1, B1, C1, D1, E1, F1, G1, H1
+	A8, B8, C8, D8, E8, F8, G8, H8,
+	A7, B7, C7, D7, E7, F7, G7, H7,
+	A6, B6, C6, D6, E6, F6, G6, H6,
+	A5, B5, C5, D5, E5, F5, G5, H5,
+	A4, B4, C4, D4, E4, F4, G4, H4,
+	A3, B3, C3, D3, E3, F3, G3, H3,
+	A2, B2, C2, D2, E2, F2, G2, H2,
+	A1, B1, C1, D1, E1, F1, G1, H1
 ];
 
-// TODO: figure out how to genericize these
-const fn file_index(square: u8) -> u8 {
-    square & 7u8 
-}
-const fn rank_index(square: u8) -> u8 {
-    square >> 3u8 
-}
-const fn square(file_index: u8, rank_index: u8) -> u8 {
-    rank_index * 8u8 + file_index 
-}
 
 const BB_VOID: u64 = 0b0000000000000000000000000000000000000000000000000000000000000000;
 const BB_ALL: u64 = 0b1111111111111111111111111111111111111111111111111111111111111111;
@@ -235,36 +233,37 @@ const BB_E8: u64 = 1 << 60;
 const BB_F8: u64 = 1 << 61;
 const BB_G8: u64 = 1 << 62;
 const BB_H8: u64 = 1 << 63;
-
 const BB_SQUARES: &'static [u64] = &[
-    BB_A1, BB_B1, BB_C1, BB_D1, BB_E1, BB_F1, BB_G1, BB_H1,
-    BB_A2, BB_B2, BB_C2, BB_D2, BB_E2, BB_F2, BB_G2, BB_H2,
-    BB_A3, BB_B3, BB_C3, BB_D3, BB_E3, BB_F3, BB_G3, BB_H3,
-    BB_A4, BB_B4, BB_C4, BB_D4, BB_E4, BB_F4, BB_G4, BB_H4,
-    BB_A5, BB_B5, BB_C5, BB_D5, BB_E5, BB_F5, BB_G5, BB_H5,
-    BB_A6, BB_B6, BB_C6, BB_D6, BB_E6, BB_F6, BB_G6, BB_H6,
-    BB_A7, BB_B7, BB_C7, BB_D7, BB_E7, BB_F7, BB_G7, BB_H7,
-    BB_A8, BB_B8, BB_C8, BB_D8, BB_E8, BB_F8, BB_G8, BB_H8
+	BB_A1, BB_B1, BB_C1, BB_D1, BB_E1, BB_F1, BB_G1, BB_H1,
+	BB_A2, BB_B2, BB_C2, BB_D2, BB_E2, BB_F2, BB_G2, BB_H2,
+	BB_A3, BB_B3, BB_C3, BB_D3, BB_E3, BB_F3, BB_G3, BB_H3,
+	BB_A4, BB_B4, BB_C4, BB_D4, BB_E4, BB_F4, BB_G4, BB_H4,
+	BB_A5, BB_B5, BB_C5, BB_D5, BB_E5, BB_F5, BB_G5, BB_H5,
+	BB_A6, BB_B6, BB_C6, BB_D6, BB_E6, BB_F6, BB_G6, BB_H6,
+	BB_A7, BB_B7, BB_C7, BB_D7, BB_E7, BB_F7, BB_G7, BB_H7,
+	BB_A8, BB_B8, BB_C8, BB_D8, BB_E8, BB_F8, BB_G8, BB_H8
 ];
 
-const fn calc_light_squares() -> u64 {
-    BB_SQUARES.iter().enumerate().fold(BB_VOID, |acc, (i, mask)| match i%2 {
-        0 => acc,
-        _ => acc | mask,
-    })
+fn calc_light_squares() -> u64 {
+	BB_SQUARES.iter().enumerate().fold(BB_VOID, |acc, (i, mask)| match i%2 {
+		0 => acc,
+		_ => acc | mask,
+	})
 }
-const BB_LIGHT_SQUARES: u64 = calc_light_squares();
+fn calc_dark_squares() -> u64 {
+	BB_SQUARES.iter().enumerate().fold(BB_VOID, |acc, (i, mask)| match i%2 {
+		0 => acc | mask,
+		_ => acc,
+	})
+}
 
-const fn calc_dark_squares() -> u64 {
-    let dark_squares = BB_VOID;
-    for i in 0..64 {
-        if (file_index(i) + rank_index(i)) % 2u8 == 0 {
-            dark_squares |= BB_SQUARES[i as usize];
-        }
-    }
-    dark_squares
+
+lazy_static! {
+
+    static ref BB_LIGHT_SQUARES: u64 = calc_light_squares();
+    static ref BB_DARK_SQUARES: u64 = calc_dark_squares();
 }
-const BB_DARK_SQUARES: u64 = calc_dark_squares();
+
 const BB_FILE_A: u64 = BB_A1 | BB_A2 | BB_A3 | BB_A4 | BB_A5 | BB_A6 | BB_A7 | BB_A8;
 const BB_FILE_B: u64 = BB_B1 | BB_B2 | BB_B3 | BB_B4 | BB_B5 | BB_B6 | BB_B7 | BB_B8;
 const BB_FILE_C: u64 = BB_C1 | BB_C2 | BB_C3 | BB_C4 | BB_C5 | BB_C6 | BB_C7 | BB_C8;
@@ -275,15 +274,37 @@ const BB_FILE_G: u64 = BB_G1 | BB_G2 | BB_G3 | BB_G4 | BB_G5 | BB_G6 | BB_G7 | B
 const BB_FILE_H: u64 = BB_H1 | BB_H2 | BB_H3 | BB_H4 | BB_H5 | BB_H6 | BB_H7 | BB_H8;
 
 const BB_FILES: &'static [u64] = &[
-    BB_FILE_A,
-    BB_FILE_B,
-    BB_FILE_C,
-    BB_FILE_D,
-    BB_FILE_E,
-    BB_FILE_F,
-    BB_FILE_G,
-    BB_FILE_H
+	BB_FILE_A,
+	BB_FILE_B,
+	BB_FILE_C,
+	BB_FILE_D,
+	BB_FILE_E,
+	BB_FILE_F,
+	BB_FILE_G,
+	BB_FILE_H
 ];
+
+lazy_static! {
+    static ref FILE_MASK: HashMap<u64, u8> = {
+        let mut file_masks = HashMap::new();
+        file_masks.insert(0u64, 0u8);
+        for (square_index, mask) in BB_SQUARES.iter().enumerate() {
+            file_masks.insert(*mask, file_index(square_index as u8));
+        }
+        file_masks
+    };
+}
+
+// TODO: figure out how to genericize these
+fn file_index(square: u8) -> u8 {
+    square & 7u8 
+}
+fn rank_index(square: u8) -> u8 {
+    square >> 3u8 
+}
+fn square(file_index: u8, rank_index: u8) -> u8 {
+    rank_index * 8u8 + file_index 
+}
 
 
 #[cfg(test)]
