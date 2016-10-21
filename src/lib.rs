@@ -165,6 +165,28 @@ const SQUARES_180: &'static [u8] = &[
 	A1, B1, C1, D1, E1, F1, G1, H1
 ];
 
+const SQUARE_NAMES: &'static [&'static str] = &[
+    "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
+    "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
+    "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
+    "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
+    "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
+    "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
+    "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
+    "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"
+];
+
+// TODO: figure out how to genericize these
+fn file_index(square: u8) -> u8 {
+    square & 7u8 
+}
+fn rank_index(square: u8) -> u8 {
+    square >> 3u8 
+}
+fn square(file_index: u8, rank_index: u8) -> u8 {
+    rank_index * 8u8 + file_index 
+}
+
 
 const BB_VOID: u64 = 0b0000000000000000000000000000000000000000000000000000000000000000;
 const BB_ALL: u64 = 0b1111111111111111111111111111111111111111111111111111111111111111;
@@ -295,25 +317,218 @@ lazy_static! {
     };
 }
 
-// TODO: figure out how to genericize these
-fn file_index(square: u8) -> u8 {
-    square & 7u8 
-}
-fn rank_index(square: u8) -> u8 {
-    square >> 3u8 
-}
-fn square(file_index: u8, rank_index: u8) -> u8 {
-    rank_index * 8u8 + file_index 
+const BB_RANK_1: u64 = BB_A1 | BB_B1 | BB_C1 | BB_D1 | BB_E1 | BB_F1 | BB_G1 | BB_H1;
+const BB_RANK_2: u64 = BB_A2 | BB_B2 | BB_C2 | BB_D2 | BB_E2 | BB_F2 | BB_G2 | BB_H2;
+const BB_RANK_3: u64 = BB_A3 | BB_B3 | BB_C3 | BB_D3 | BB_E3 | BB_F3 | BB_G3 | BB_H3;
+const BB_RANK_4: u64 = BB_A4 | BB_B4 | BB_C4 | BB_D4 | BB_E4 | BB_F4 | BB_G4 | BB_H4;
+const BB_RANK_5: u64 = BB_A5 | BB_B5 | BB_C5 | BB_D5 | BB_E5 | BB_F5 | BB_G5 | BB_H5;
+const BB_RANK_6: u64 = BB_A6 | BB_B6 | BB_C6 | BB_D6 | BB_E6 | BB_F6 | BB_G6 | BB_H6;
+const BB_RANK_7: u64 = BB_A7 | BB_B7 | BB_C7 | BB_D7 | BB_E7 | BB_F7 | BB_G7 | BB_H7;
+const BB_RANK_8: u64 = BB_A8 | BB_B8 | BB_C8 | BB_D8 | BB_E8 | BB_F8 | BB_G8 | BB_H8;
+
+const BB_RANKS: &'static [u64] = &[
+	BB_RANK_1,
+	BB_RANK_2,
+	BB_RANK_3,
+	BB_RANK_4,
+	BB_RANK_5,
+	BB_RANK_6,
+	BB_RANK_7,
+	BB_RANK_8
+];
+
+lazy_static! {
+    static ref RANK_MASK: HashMap<u64, u8> = {
+        let mut rank_masks = HashMap::new();
+        rank_masks.insert(0u64, 0u8);
+        for (square_index, mask) in BB_SQUARES.iter().enumerate() {
+            rank_masks.insert(*mask, rank_index(square_index as u8));
+        }
+        rank_masks
+    };
 }
 
+lazy_static! {
+    static ref DIAG_MASK_NW: HashMap<u64, u8> = {
+        let mut diag_mask_nw = HashMap::new();
+        diag_mask_nw.insert(0u64, 0u8);
+        for i in 0u64..8 {
+            diag_mask_nw.insert(1 << i,  0u8);
+            for j in 0u64..i+1u64 {
+                let mask = diag_mask_nw.entry(1 << i).or_insert(0u8); 
+                *mask |= 1 << (i + 7 * j)
+            }
+            for j in 0u64..i+1u64 {
+                let value = *diag_mask_nw.entry(1 << i).or_insert(0u8);
+                let mask = diag_mask_nw.entry(1 << (i + 7 * j)).or_insert(0u8);
+                *mask = value;
+            }
+        }
+        for i in 63u64..55 {
+            diag_mask_nw.insert(1 << i, 0);
+            for j in 0..64-i {
+                let mask = diag_mask_nw.entry(1 << i).or_insert(0u8);
+                *mask |= 1 << (i - 7 * j);
+            }
+            for j in 0..64-i {
+                let value = *diag_mask_nw.entry(1 << i).or_insert(0u8);
+                let mask = diag_mask_nw.entry(1 << (i - 7 * j)).or_insert(0u8);
+                *mask = value;
+            }
+        }
+        diag_mask_nw
+    };
+}
+
+lazy_static! {
+    static ref DIAG_MASK_NE: HashMap<u64, u8> = {
+        let mut diag_mask_ne = HashMap::new();
+        diag_mask_ne.insert(0u64, 0u8);
+        for u in 7i64..-1 {
+            // TODO: ewwwww
+            let i = u as u64;
+            diag_mask_ne.insert(1 << i, 0);
+            for j in 0..8 - i {
+                let mask = diag_mask_ne.entry(1 << i).or_insert(0);
+                *mask |= 1 << (i + 9 * j);
+            }
+            for j in 0..8 - i {
+                let value = *diag_mask_ne.entry(1 <<i).or_insert(0);
+                let mask = diag_mask_ne.entry(1 << (i + 9 * j)).or_insert(0);
+                *mask = value;
+            }
+        }
+
+        for i in 56u64..64 {
+            diag_mask_ne.insert(1 << i, 0);
+            for j in 0..i-55 {
+                let mask = diag_mask_ne.entry(1 << i).or_insert(0);
+                *mask |= 1 << (i - 9 * j);
+            }
+            for j in 0..i-55 {
+                let value = *diag_mask_ne.entry(1 << i).or_insert(0);
+                let mask = diag_mask_ne.entry(1 << (i - 9 * j)).or_insert(0);
+                *mask = value;
+            }
+        }
+        diag_mask_ne
+    };
+}
+
+// TODO: these are probably not worth it, but leaving them in until I finish
+// porting
+fn pop_count(b: u64) -> u32 {
+    b.count_zeros()
+}
+
+fn bit_scan(b: u64) -> u32 {
+    b.trailing_zeros()
+}
+
+fn shift_down(b: u64) -> u64 {
+    b >> 8
+}
+
+fn shift_2_down(b: u64) -> u64 {
+    b >> 16
+}
+
+fn shift_up(b: u64) -> u64 {
+    (b << 8) & BB_ALL
+}
+
+fn shift_2_up(b: u64) -> u64 {
+    (b << 16) & BB_ALL
+}
+
+fn shift_right(b: u64) -> u64 {
+    (b << 1) & !BB_FILE_A & BB_ALL
+}
+
+fn shift_2_right(b: u64) -> u64 {
+    (b << 2) & !BB_FILE_A & !BB_FILE_B & BB_ALL
+}
+
+fn shift_left(b: u64) -> u64 {
+    (b >> 1) & !BB_FILE_H
+}
+
+fn shift_2_left(b: u64) -> u64 {
+    (b >> 2) & !BB_FILE_G & !BB_FILE_H
+}
+
+fn shift_up_left(b: u64) -> u64 {
+    (b << 7) & !BB_FILE_H & BB_ALL
+}
+
+fn shift_up_right(b: u64) -> u64 {
+    (b << 9) & !BB_FILE_A & BB_ALL
+}
+
+fn shift_down_left(b: u64) -> u64 {
+    (b >> 9) & !BB_FILE_H
+}
+
+fn shift_down_right(b: u64) -> u64 {
+    (b >> 7) & !BB_FILE_A
+}
+
+lazy_static! {
+    static ref BB_KNIGHT_ATTACKS: Vec<u64> = {
+        let mut bb_knight_attacks = Vec::new();
+        for bb_square in BB_SQUARES.iter().cloned() {
+            bb_knight_attacks.push(
+                  shift_left(shift_2_up(bb_square))
+                | shift_right(shift_2_up(bb_square))
+                | shift_left(shift_2_down(bb_square))
+                | shift_right(shift_2_down(bb_square))
+                | shift_2_left(shift_up(bb_square))
+                | shift_2_right(shift_up(bb_square))
+                | shift_2_left(shift_down(bb_square))
+                | shift_2_right(shift_down(bb_square))
+            );
+        }
+        bb_knight_attacks
+    };
+}
 
 #[cfg(test)]
 mod tests {
     use SQUARES;
+    use bit_scan;
     #[test]
     fn squares_is_properly_initalized() {
         for i in 0..64 {
             assert!(SQUARES[i] == i as u8);
         }
+    }
+    #[test]
+    fn test_bit_scan() {
+        assert!(0 == bit_scan(0b00000001));
+        assert!(1 == bit_scan(0b00000010));
+        assert!(2 == bit_scan(0b00000100));
+        assert!(3 == bit_scan(0b00001000));
+        assert!(4 == bit_scan(0b00010000));
+        assert!(5 == bit_scan(0b00100000));
+        assert!(6 == bit_scan(0b01000000));
+        assert!(7 == bit_scan(0b10000000));
+
+        assert!(0 == bit_scan(0b00000011));
+        assert!(1 == bit_scan(0b00000110));
+        assert!(2 == bit_scan(0b00001100));
+        assert!(3 == bit_scan(0b00011000));
+        assert!(4 == bit_scan(0b00110000));
+        assert!(5 == bit_scan(0b01100000));
+        assert!(6 == bit_scan(0b11000000));
+        assert!(7 == bit_scan(0b10000000));
+
+        assert!(0 == bit_scan(0b11111111));
+        assert!(1 == bit_scan(0b11111110));
+        assert!(2 == bit_scan(0b11111100));
+        assert!(3 == bit_scan(0b11111000));
+        assert!(4 == bit_scan(0b11110000));
+        assert!(5 == bit_scan(0b11100000));
+        assert!(6 == bit_scan(0b11000000));
+        assert!(7 == bit_scan(0b10000000));
     }
 }
