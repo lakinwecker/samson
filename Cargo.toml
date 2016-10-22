@@ -5,4 +5,6 @@ authors = ["Lakin Wecker <lakin@wecker.ca>"]
 
 [dependencies]
 lazy_static = "*"
+num = "*"
+regex = "0.1"
 
