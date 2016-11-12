@@ -25,18 +25,24 @@ extern crate lazy_static;
 extern crate num;
 extern crate regex;
 
+#[macro_use]
+extern crate nom;
+
+use nom::IResult::*;
 use regex::Regex;
 use std::collections::HashMap;
 use std::fmt;
+pub mod parser;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd)]
 pub enum Color {
     White,
     Black
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd)]
 pub enum PieceType {
+    Null = 0,
     Pawn = 1,
     Knight = 2,
     Bishop = 3,
@@ -73,71 +79,71 @@ lazy_static! {
     pub static ref STARTING_BOARD_FEN: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 }
 
-pub const A1: u8 = 0;
-pub const B1: u8 = 1;
-pub const C1: u8 = 2;
-pub const D1: u8 = 3;
-pub const E1: u8 = 4;
-pub const F1: u8 = 5;
-pub const G1: u8 = 6;
-pub const H1: u8 = 7;
-pub const A2: u8 = 8;
-pub const B2: u8 = 9;
-pub const C2: u8 = 10;
-pub const D2: u8 = 11;
-pub const E2: u8 = 12;
-pub const F2: u8 = 13;
-pub const G2: u8 = 14;
-pub const H2: u8 = 15;
-pub const A3: u8 = 16;
-pub const B3: u8 = 17;
-pub const C3: u8 = 18;
-pub const D3: u8 = 19;
-pub const E3: u8 = 20;
-pub const F3: u8 = 21;
-pub const G3: u8 = 22;
-pub const H3: u8 = 23;
-pub const A4: u8 = 24;
-pub const B4: u8 = 25;
-pub const C4: u8 = 26;
-pub const D4: u8 = 27;
-pub const E4: u8 = 28;
-pub const F4: u8 = 29;
-pub const G4: u8 = 30;
-pub const H4: u8 = 31;
-pub const A5: u8 = 32;
-pub const B5: u8 = 33;
-pub const C5: u8 = 34;
-pub const D5: u8 = 35;
-pub const E5: u8 = 36;
-pub const F5: u8 = 37;
-pub const G5: u8 = 38;
-pub const H5: u8 = 39;
-pub const A6: u8 = 40;
-pub const B6: u8 = 41;
-pub const C6: u8 = 42;
-pub const D6: u8 = 43;
-pub const E6: u8 = 44;
-pub const F6: u8 = 45;
-pub const G6: u8 = 46;
-pub const H6: u8 = 47;
-pub const A7: u8 = 48;
-pub const B7: u8 = 49;
-pub const C7: u8 = 50;
-pub const D7: u8 = 51;
-pub const E7: u8 = 52;
-pub const F7: u8 = 53;
-pub const G7: u8 = 54;
-pub const H7: u8 = 55;
-pub const A8: u8 = 56;
-pub const B8: u8 = 57;
-pub const C8: u8 = 58;
-pub const D8: u8 = 59;
-pub const E8: u8 = 60;
-pub const F8: u8 = 61;
-pub const G8: u8 = 62;
-pub const H8: u8 = 63;
-pub const SQUARES: &'static [u8] = &[
+pub const A1: usize = 0;
+pub const B1: usize = 1;
+pub const C1: usize = 2;
+pub const D1: usize = 3;
+pub const E1: usize = 4;
+pub const F1: usize = 5;
+pub const G1: usize = 6;
+pub const H1: usize = 7;
+pub const A2: usize = 8;
+pub const B2: usize = 9;
+pub const C2: usize = 10;
+pub const D2: usize = 11;
+pub const E2: usize = 12;
+pub const F2: usize = 13;
+pub const G2: usize = 14;
+pub const H2: usize = 15;
+pub const A3: usize = 16;
+pub const B3: usize = 17;
+pub const C3: usize = 18;
+pub const D3: usize = 19;
+pub const E3: usize = 20;
+pub const F3: usize = 21;
+pub const G3: usize = 22;
+pub const H3: usize = 23;
+pub const A4: usize = 24;
+pub const B4: usize = 25;
+pub const C4: usize = 26;
+pub const D4: usize = 27;
+pub const E4: usize = 28;
+pub const F4: usize = 29;
+pub const G4: usize = 30;
+pub const H4: usize = 31;
+pub const A5: usize = 32;
+pub const B5: usize = 33;
+pub const C5: usize = 34;
+pub const D5: usize = 35;
+pub const E5: usize = 36;
+pub const F5: usize = 37;
+pub const G5: usize = 38;
+pub const H5: usize = 39;
+pub const A6: usize = 40;
+pub const B6: usize = 41;
+pub const C6: usize = 42;
+pub const D6: usize = 43;
+pub const E6: usize = 44;
+pub const F6: usize = 45;
+pub const G6: usize = 46;
+pub const H6: usize = 47;
+pub const A7: usize = 48;
+pub const B7: usize = 49;
+pub const C7: usize = 50;
+pub const D7: usize = 51;
+pub const E7: usize = 52;
+pub const F7: usize = 53;
+pub const G7: usize = 54;
+pub const H7: usize = 55;
+pub const A8: usize = 56;
+pub const B8: usize = 57;
+pub const C8: usize = 58;
+pub const D8: usize = 59;
+pub const E8: usize = 60;
+pub const F8: usize = 61;
+pub const G8: usize = 62;
+pub const H8: usize = 63;
+pub const SQUARES: &'static [usize] = &[
 	A1, B1, C1, D1, E1, F1, G1, H1,
 	A2, B2, C2, D2, E2, F2, G2, H2,
 	A3, B3, C3, D3, E3, F3, G3, H3,
@@ -147,7 +153,7 @@ pub const SQUARES: &'static [u8] = &[
 	A7, B7, C7, D7, E7, F7, G7, H7,
 	A8, B8, C8, D8, E8, F8, G8, H8
 ];
-pub const SQUARES_180: &'static [u8] = &[
+pub const SQUARES_180: &'static [usize] = &[
 	A8, B8, C8, D8, E8, F8, G8, H8,
 	A7, B7, C7, D7, E7, F7, G7, H7,
 	A6, B6, C6, D6, E6, F6, G6, H6,
@@ -170,14 +176,14 @@ pub const SQUARE_NAMES: &'static [&'static str] = &[
 ];
 
 // TODO: figure out how to genericize these
-pub fn file_index(square: u8) -> u8 {
-    square & 7u8 
+pub fn file_index(square: usize) -> usize {
+    square & 7usize 
 }
-pub fn rank_index(square: u8) -> u8 {
-    square >> 3u8 
+pub fn rank_index(square: usize) -> usize {
+    square >> 3usize 
 }
-pub fn square(file_index: u8, rank_index: u8) -> u8 {
-    rank_index * 8u8 + file_index 
+pub fn square(file_index: usize, rank_index: usize) -> usize {
+    rank_index * 8usize + file_index 
 }
 
 
@@ -300,11 +306,11 @@ pub const BB_FILES: &'static [u64] = &[
 ];
 
 lazy_static! {
-    pub static ref FILE_MASK: HashMap<u64, u8> = {
+    pub static ref FILE_MASK: HashMap<u64, usize> = {
         let mut file_masks = HashMap::new();
-        file_masks.insert(0u64, 0u8);
+        file_masks.insert(0u64, 0usize);
         for (square_index, mask) in BB_SQUARES.iter().enumerate() {
-            file_masks.insert(*mask, file_index(square_index as u8));
+            file_masks.insert(*mask, file_index(square_index));
         }
         file_masks
     };
@@ -331,41 +337,41 @@ pub const BB_RANKS: &'static [u64] = &[
 ];
 
 lazy_static! {
-    pub static ref RANK_MASK: HashMap<u64, u8> = {
+    pub static ref RANK_MASK: HashMap<u64, usize> = {
         let mut rank_masks = HashMap::new();
-        rank_masks.insert(0u64, 0u8);
+        rank_masks.insert(0u64, 0usize);
         for (square_index, mask) in BB_SQUARES.iter().enumerate() {
-            rank_masks.insert(*mask, rank_index(square_index as u8));
+            rank_masks.insert(*mask, rank_index(square_index));
         }
         rank_masks
     };
 }
 
 lazy_static! {
-    pub static ref DIAG_MASK_NW: HashMap<u64, u8> = {
+    pub static ref DIAG_MASK_NW: HashMap<u64, usize> = {
         let mut diag_mask_nw = HashMap::new();
-        diag_mask_nw.insert(0u64, 0u8);
+        diag_mask_nw.insert(0u64, 0usize);
         for i in 0u64..8 {
-            diag_mask_nw.insert(1 << i,  0u8);
+            diag_mask_nw.insert(1 << i,  0usize);
             for j in 0u64..i+1u64 {
-                let mask = diag_mask_nw.entry(1 << i).or_insert(0u8); 
+                let mask = diag_mask_nw.entry(1 << i).or_insert(0usize); 
                 *mask |= 1 << (i + 7 * j)
             }
             for j in 0u64..i+1u64 {
-                let value = *diag_mask_nw.entry(1 << i).or_insert(0u8);
-                let mask = diag_mask_nw.entry(1 << (i + 7 * j)).or_insert(0u8);
+                let value = *diag_mask_nw.entry(1 << i).or_insert(0usize);
+                let mask = diag_mask_nw.entry(1 << (i + 7 * j)).or_insert(0usize);
                 *mask = value;
             }
         }
         for i in 63u64..55 {
             diag_mask_nw.insert(1 << i, 0);
             for j in 0..64-i {
-                let mask = diag_mask_nw.entry(1 << i).or_insert(0u8);
+                let mask = diag_mask_nw.entry(1 << i).or_insert(0usize);
                 *mask |= 1 << (i - 7 * j);
             }
             for j in 0..64-i {
-                let value = *diag_mask_nw.entry(1 << i).or_insert(0u8);
-                let mask = diag_mask_nw.entry(1 << (i - 7 * j)).or_insert(0u8);
+                let value = *diag_mask_nw.entry(1 << i).or_insert(0usize);
+                let mask = diag_mask_nw.entry(1 << (i - 7 * j)).or_insert(0usize);
                 *mask = value;
             }
         }
@@ -374,9 +380,9 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref DIAG_MASK_NE: HashMap<u64, u8> = {
+    pub static ref DIAG_MASK_NE: HashMap<u64, usize> = {
         let mut diag_mask_ne = HashMap::new();
-        diag_mask_ne.insert(0u64, 0u8);
+        diag_mask_ne.insert(0u64, 0usize);
         for u in 7i64..-1 {
             // TODO: ewwwww
             let i = u as u64;
@@ -846,7 +852,8 @@ lazy_static! {
 }
 
 
-#[derive(Copy, Clone, Eq, PartialEq, PartialOrd)]
+//------------------------------------------------------------------------------
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Hash)]
 pub struct Piece {
     piece_type: PieceType,
     color: Color
@@ -896,6 +903,47 @@ impl fmt::Debug for Piece {
     }
 }
 
+//------------------------------------------------------------------------------
+// TODO: consider making Square an enum for compile time checking awesomeness
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Hash)]
+pub struct Move {
+    from_square: Option<usize>,
+    to_square: Option<usize>,
+    promotion: Option<PieceType> 
+}
+
+impl Move {
+
+    pub fn null() -> Move {
+        Move{from_square: None, to_square: None, promotion: None}
+    }
+
+    pub fn new(from: usize, to: usize) -> Move {
+        Move{from_square: Some(from), to_square: Some(to), promotion: None}
+    }
+
+    pub fn new_with_promotion(from: usize, to: usize, promotion: PieceType) -> Move {
+        Move{from_square: Some(from), to_square: Some(to), promotion: Some(promotion)}
+    }
+
+    /// Gets an UCI string for the move.
+    ///
+    /// For example a move from A7 to A8 would be ``a7a8`` or ``a7a8q`` if it
+    /// is a promotion to a queen.
+    ///
+    /// The UCI representation of null moves is ``0000``.
+    pub fn uci(&self) -> String {
+        match self {
+            &Move {from_square: Some(f), to_square: Some(t), promotion: Some(p)} =>
+                format!("{}{}{}", SQUARE_NAMES[f], SQUARE_NAMES[t], PIECE_SYMBOLS_BLACK[p as usize]),
+            &Move {from_square: Some(f), to_square: Some(t), promotion: None} =>
+                format!("{}{}", SQUARE_NAMES[f], SQUARE_NAMES[t]),
+            _ =>
+                "0000".to_string()
+        }
+    }
+    
+}
 
 #[cfg(test)]
 mod tests {
@@ -904,7 +952,7 @@ mod tests {
     #[test]
     fn squares_is_properly_initalized() {
         for i in 0..64 {
-            assert!(SQUARES[i] == i as u8);
+            assert!(SQUARES[i] == i);
         }
     }
     #[test]
@@ -1000,7 +1048,7 @@ mod tests {
 		assert!(format!("{}", a) != format!("{}", c));
     }
     #[test]
-    fn test_from_symbol() {
+    fn test_piece_from_symbol() {
         if let Some(white_knight) = Piece::from_symbol('N') {
             assert!(white_knight.color == Color::White);
             assert!(white_knight.piece_type == PieceType::Knight);
@@ -1017,5 +1065,23 @@ mod tests {
             assert!(false, "Unable to create a black queen from symbol q");
         }
 
+    }
+
+    #[test]
+    fn test_move_equality() {
+        let a = Move::new(A1, A2);
+        let b = Move::new(A1, A2);
+        let c = Move::new_with_promotion(H7, H8, PieceType::Bishop);
+        let d1 =Move::new(H7, H8);
+        let d2 =Move::new(H7, H8);
+
+        assert!(a == b);
+        assert!(b == a);
+        assert!(d1 == d2);
+
+        assert!(a != c);
+        assert!(c != d1);
+        assert!(b != d1);
+        assert!((d1 != d2) == false);
     }
 }

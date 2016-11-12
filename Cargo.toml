@@ -8,3 +8,7 @@ lazy_static = "*"
 num = "*"
 regex = "0.1"
 
+[dependencies.nom]
+version = "^1.2.4"
+features = ["regexp"]
+
