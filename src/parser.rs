@@ -84,6 +84,12 @@ named!(pub uci <Move>, chain!(
     }
 ));
 
+named!(pub uci2 <Move>, chain!(
+    from: sq ~
+    to: sq,
+    || { Move::new(from, to) }
+));
+
 
 
 #[cfg(test)]
@@ -149,7 +155,12 @@ mod tests {
 
     #[test]
     fn test_parse_uci() {
-        assert_eq!(Done(&[][..], Move::new(E2, E4)), uci(b"e2e4"));
         assert_eq!(Done(&[][..], Move::new_with_promotion(E2, E4, PieceType::Pawn)), uci(b"e2e4p"));
+        assert_eq!(Done(&[][..], Move::new(E2, E4)), uci(b"e2e4"));
+        assert_eq!(Done(&[][..], Move::null()), uci(b"0000"));
+    }
+    #[test]
+    fn test_parse_uci2() {
+        assert_eq!(Done(&[][..], Move::new(E2, E4)), uci2(b"e2e4"));
     }
 }
