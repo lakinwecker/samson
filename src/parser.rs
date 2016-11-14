@@ -22,10 +22,14 @@
 
 use super::*;
 
+const NOT_A_SQUARE: usize = 65;
+const NOT_A_RANK: usize = 8;
+const NOT_A_FILE: usize = 8;
+
 //------------------------------------------------------------------------------
 // UCI related parsers
 named!(pub file <usize>, chain!(
-    f: one_of!("abcdefghABCDEFGH"),
+    f: one_of!("abcdefghABCDEFGH0"),
     || { 
         match f {
             'a' | 'A' => 0,
@@ -36,12 +40,13 @@ named!(pub file <usize>, chain!(
             'f' | 'F' => 5,
             'g' | 'G' => 6,
             'h' | 'H' => 7,
-            _ => 10 // NOTE: this  will never occur provided the above parser isn't buggy. :P
+            '0' => NOT_A_FILE,
+            _ => NOT_A_FILE // NOTE: this  will never occur provided the above parser isn't buggy. :P
         }
     }
 ));
 named!(pub rank <usize>, chain!(
-    r: one_of!("12345678"),
+    r: one_of!("123456780"),
     || { 
         match r {
             '1' => 0,
@@ -52,11 +57,12 @@ named!(pub rank <usize>, chain!(
             '6' => 5,
             '7' => 6,
             '8' => 7,
-            _ => 10 // NOTE: this  will never occur provided the above parser isn't buggy. :P
+            '0' => NOT_A_RANK,
+            _ => NOT_A_RANK // NOTE: this  will never occur provided the above parser isn't buggy. :P
         }
     }
 ));
-named!(pub piece <PieceType>, chain!(
+named!(pub piece <PieceType>, complete!(chain!(
     p: one_of!("pnbrqkPNBRQK"),
     || { 
         match p {
@@ -69,28 +75,28 @@ named!(pub piece <PieceType>, chain!(
             _ => PieceType::Null // NOTE: this  will never occur provided the above parser isn't buggy. :P
         }
     }
-));
+)));
 
-named!(pub sq <usize>, chain!(f: file ~ r: rank, || { square(f, r) }));
+named!(pub sq <usize>, chain!(f: file ~ r: rank, || {
+    match (f, r) {
+        (NOT_A_FILE, _) | (_, NOT_A_RANK) => NOT_A_SQUARE,
+        _ => square(f, r)
+    }
+}));
 named!(pub uci <Move>, chain!(
     from: sq ~
     to: sq ~
     promotion: piece? ,
     || {
-        match promotion {
-            Some(p) => Move::new_with_promotion(from, to, p),
-            None => Move::new(from, to)
+        match (from, to) {
+            (NOT_A_SQUARE, _) | (_, NOT_A_SQUARE) => Move::null(),
+            _ => match promotion {
+                Some(p) => Move::new_with_promotion(from, to, p),
+                None => Move::new(from, to)
+            }
         }
     }
 ));
-
-named!(pub uci2 <Move>, chain!(
-    from: sq ~
-    to: sq,
-    || { Move::new(from, to) }
-));
-
-
 
 #[cfg(test)]
 mod tests {
@@ -158,9 +164,5 @@ mod tests {
         assert_eq!(Done(&[][..], Move::new_with_promotion(E2, E4, PieceType::Pawn)), uci(b"e2e4p"));
         assert_eq!(Done(&[][..], Move::new(E2, E4)), uci(b"e2e4"));
         assert_eq!(Done(&[][..], Move::null()), uci(b"0000"));
-    }
-    #[test]
-    fn test_parse_uci2() {
-        assert_eq!(Done(&[][..], Move::new(E2, E4)), uci2(b"e2e4"));
     }
 }
