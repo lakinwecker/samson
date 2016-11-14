@@ -942,6 +942,14 @@ impl Move {
                 "0000".to_string()
         }
     }
+
+    pub fn from_uci(uci: &str) -> Result<Move, String> {
+        if let Done(_left_overs, parsed) = parser::uci(uci.as_bytes()) {
+            Ok(parsed)
+        } else {
+            Err(format!("Parser error: {}", uci))
+        }
+    }
     
 }
 
@@ -1072,16 +1080,21 @@ mod tests {
         let a = Move::new(A1, A2);
         let b = Move::new(A1, A2);
         let c = Move::new_with_promotion(H7, H8, PieceType::Bishop);
-        let d1 =Move::new(H7, H8);
-        let d2 =Move::new(H7, H8);
+        let d1 = Move::new(H7, H8);
+        let d2 = Move::new(H7, H8);
 
-        assert!(a == b);
-        assert!(b == a);
-        assert!(d1 == d2);
+        assert_eq!(a, b);
+        assert_eq!(b, a);
+        assert_eq!(d1, d2);
 
         assert!(a != c);
         assert!(c != d1);
         assert!(b != d1);
         assert!((d1 != d2) == false);
+    }
+    #[test]
+    fn test_uci_parsing() {
+        assert_eq!(Move::from_uci("b5c7").unwrap(), Move::new(B5, C7));
+        assert_eq!(Move::from_uci("e7e8q").unwrap(), Move::new_with_promotion(E7, E8, PieceType::Queen));
     }
 }
