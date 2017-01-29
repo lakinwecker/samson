@@ -20,45 +20,41 @@
 // Shamelessly patterned after the amazing python-chess library by Niklas Fiekas
 //------------------------------------------------------------------------------
 
-use super::*;
-
-const NOT_A_SQUARE: usize = 65;
-const NOT_A_RANK: usize = 8;
-const NOT_A_FILE: usize = 8;
+use super::types::*;
 
 //------------------------------------------------------------------------------
 // UCI related parsers
-named!(pub file <usize>, chain!(
+named!(pub file <File>, chain!(
     f: one_of!("abcdefghABCDEFGH0"),
     || { 
         match f {
-            'a' | 'A' => 0,
-            'b' | 'B' => 1,
-            'c' | 'C' => 2,
-            'd' | 'D' => 3,
-            'e' | 'E' => 4,
-            'f' | 'F' => 5,
-            'g' | 'G' => 6,
-            'h' | 'H' => 7,
-            '0' => NOT_A_FILE,
-            _ => NOT_A_FILE // NOTE: this  will never occur provided the above parser isn't buggy. :P
+            'a' | 'A' => FILE_A,
+            'b' | 'B' => FILE_B,
+            'c' | 'C' => FILE_C,
+            'd' | 'D' => FILE_D,
+            'e' | 'E' => FILE_E,
+            'f' | 'F' => FILE_F,
+            'g' | 'G' => FILE_G,
+            'h' | 'H' => FILE_H,
+            '0' => FILE_NB,
+            _ => FILE_NB
         }
     }
 ));
-named!(pub rank <usize>, chain!(
+named!(pub rank <Rank>, chain!(
     r: one_of!("123456780"),
     || { 
         match r {
-            '1' => 0,
-            '2' => 1,
-            '3' => 2,
-            '4' => 3,
-            '5' => 4,
-            '6' => 5,
-            '7' => 6,
-            '8' => 7,
-            '0' => NOT_A_RANK,
-            _ => NOT_A_RANK // NOTE: this  will never occur provided the above parser isn't buggy. :P
+            '1' => RANK_1,
+            '2' => RANK_2,
+            '3' => RANK_3,
+            '4' => RANK_4,
+            '5' => RANK_5,
+            '6' => RANK_6,
+            '7' => RANK_7,
+            '8' => RANK_8,
+            '0' => RANK_NB,
+            _ => RANK_NB
         }
     }
 ));
@@ -66,33 +62,34 @@ named!(pub piece <PieceType>, complete!(chain!(
     p: one_of!("pnbrqkPNBRQK"),
     || { 
         match p {
-            'p' | 'P' => PieceType::Pawn,
-            'n' | 'N' => PieceType::Knight,
-            'b' | 'B' => PieceType::Bishop,
-            'r' | 'R' => PieceType::Rook,
-            'q' | 'Q' => PieceType::Queen,
-            'k' | 'K' => PieceType::King,
-            _ => PieceType::Null // NOTE: this  will never occur provided the above parser isn't buggy. :P
+            'p' | 'P' => PAWN,
+            'n' | 'N' => KNIGHT,
+            'b' | 'B' => BISHOP,
+            'r' | 'R' => ROOK,
+            'q' | 'Q' => QUEEN,
+            'k' | 'K' => KING,
+            _ => NO_PIECE_TYPE
         }
     }
 )));
 
-named!(pub sq <usize>, chain!(f: file ~ r: rank, || {
+named!(pub sq <Square>, chain!(f: File ~ r: Rank, || {
     match (f, r) {
-        (NOT_A_FILE, _) | (_, NOT_A_RANK) => NOT_A_SQUARE,
-        _ => square(f, r)
+        (FILE_NB, _) | (_, RANK_NB) => SQUARE_NB,
+        _ => make_square(f, r)
     }
 }));
+
 named!(pub uci <Move>, chain!(
     from: sq ~
     to: sq ~
     promotion: piece? ,
     || {
         match (from, to) {
-            (NOT_A_SQUARE, _) | (_, NOT_A_SQUARE) => Move::null(),
+            (SQUARE_NB, _) | (_, SQUARE_NB) => MOVE_NULL,
             _ => match promotion {
-                Some(p) => Move::new_with_promotion(from, to, p),
-                None => Move::new(from, to)
+                Some(p) => make_move_with_promotion(from, to, p),
+                None => make_move(from, to)
             }
         }
     }
@@ -107,62 +104,61 @@ mod tests {
 
     #[test]
     fn test_parse_square() {
-        assert_eq!(Done(&[][..], A1), sq(b"a1"));
-        assert_eq!(Done(&[][..], A1), sq(b"A1"));
-        assert_eq!(Done(&[][..], B1), sq(b"b1"));
-        assert_eq!(Done(&[][..], B1), sq(b"B1"));
-        assert_eq!(Done(&[][..], C1), sq(b"c1"));
-        assert_eq!(Done(&[][..], C1), sq(b"C1"));
-        assert_eq!(Done(&[][..], D1), sq(b"d1"));
-        assert_eq!(Done(&[][..], D1), sq(b"D1"));
-        assert_eq!(Done(&[][..], E1), sq(b"e1"));
-        assert_eq!(Done(&[][..], E1), sq(b"E1"));
-        assert_eq!(Done(&[][..], F1), sq(b"f1"));
-        assert_eq!(Done(&[][..], F1), sq(b"F1"));
-        assert_eq!(Done(&[][..], G1), sq(b"g1"));
-        assert_eq!(Done(&[][..], G1), sq(b"G1"));
-        assert_eq!(Done(&[][..], H1), sq(b"h1"));
-        assert_eq!(Done(&[][..], H1), sq(b"H1"));
+        assert_eq!(Done(&[][..], SQ_A1), sq(b"a1"));
+        assert_eq!(Done(&[][..], SQ_A1), sq(b"A1"));
+        assert_eq!(Done(&[][..], SQ_B1), sq(b"b1"));
+        assert_eq!(Done(&[][..], SQ_B1), sq(b"B1"));
+        assert_eq!(Done(&[][..], SQ_C1), sq(b"c1"));
+        assert_eq!(Done(&[][..], SQ_C1), sq(b"C1"));
+        assert_eq!(Done(&[][..], SQ_D1), sq(b"d1"));
+        assert_eq!(Done(&[][..], SQ_D1), sq(b"D1"));
+        assert_eq!(Done(&[][..], SQ_E1), sq(b"e1"));
+        assert_eq!(Done(&[][..], SQ_E1), sq(b"E1"));
+        assert_eq!(Done(&[][..], SQ_F1), sq(b"f1"));
+        assert_eq!(Done(&[][..], SQ_F1), sq(b"F1"));
+        assert_eq!(Done(&[][..], SQ_G1), sq(b"g1"));
+        assert_eq!(Done(&[][..], SQ_G1), sq(b"G1"));
+        assert_eq!(Done(&[][..], SQ_H1), sq(b"h1"));
+        assert_eq!(Done(&[][..], SQ_H1), sq(b"H1"));
 
-        assert_eq!(Done(&[][..], A2), sq(b"a2"));
-        assert_eq!(Done(&[][..], A2), sq(b"A2"));
-        assert_eq!(Done(&[][..], B2), sq(b"b2"));
-        assert_eq!(Done(&[][..], B2), sq(b"B2"));
-        assert_eq!(Done(&[][..], C2), sq(b"c2"));
-        assert_eq!(Done(&[][..], C2), sq(b"C2"));
-        assert_eq!(Done(&[][..], D2), sq(b"d2"));
-        assert_eq!(Done(&[][..], D2), sq(b"D2"));
-        assert_eq!(Done(&[][..], E2), sq(b"e2"));
-        assert_eq!(Done(&[][..], E2), sq(b"E2"));
-        assert_eq!(Done(&[][..], F2), sq(b"f2"));
-        assert_eq!(Done(&[][..], F2), sq(b"F2"));
-        assert_eq!(Done(&[][..], G2), sq(b"g2"));
-        assert_eq!(Done(&[][..], G2), sq(b"G2"));
-        assert_eq!(Done(&[][..], H2), sq(b"h2"));
-        assert_eq!(Done(&[][..], H2), sq(b"H2"));
+        assert_eq!(Done(&[][..], SQ_A2), sq(b"a2"));
+        assert_eq!(Done(&[][..], SQ_A2), sq(b"A2"));
+        assert_eq!(Done(&[][..], SQ_B2), sq(b"b2"));
+        assert_eq!(Done(&[][..], SQ_B2), sq(b"B2"));
+        assert_eq!(Done(&[][..], SQ_C2), sq(b"c2"));
+        assert_eq!(Done(&[][..], SQ_C2), sq(b"C2"));
+        assert_eq!(Done(&[][..], SQ_D2), sq(b"d2"));
+        assert_eq!(Done(&[][..], SQ_D2), sq(b"D2"));
+        assert_eq!(Done(&[][..], SQ_E2), sq(b"e2"));
+        assert_eq!(Done(&[][..], SQ_E2), sq(b"E2"));
+        assert_eq!(Done(&[][..], SQ_F2), sq(b"f2"));
+        assert_eq!(Done(&[][..], SQ_F2), sq(b"F2"));
+        assert_eq!(Done(&[][..], SQ_G2), sq(b"g2"));
+        assert_eq!(Done(&[][..], SQ_G2), sq(b"G2"));
+        assert_eq!(Done(&[][..], SQ_H2), sq(b"h2"));
+        assert_eq!(Done(&[][..], SQ_H2), sq(b"H2"));
     }
 
     #[test]
     fn test_parse_piece() {
-        assert_eq!(Done(&[][..], PieceType::Pawn), piece(b"p"));
-        assert_eq!(Done(&[][..], PieceType::Rook), piece(b"r"));
-        assert_eq!(Done(&[][..], PieceType::Knight), piece(b"n"));
-        assert_eq!(Done(&[][..], PieceType::Bishop), piece(b"b"));
-        assert_eq!(Done(&[][..], PieceType::Queen), piece(b"q"));
-        assert_eq!(Done(&[][..], PieceType::King), piece(b"k"));
+        assert_eq!(Done(&[][..], PAWN), piece(b"p"));
+        assert_eq!(Done(&[][..], ROOK), piece(b"r"));
+        assert_eq!(Done(&[][..], KNIGHT), piece(b"n"));
+        assert_eq!(Done(&[][..], BISHOP), piece(b"b"));
+        assert_eq!(Done(&[][..], QUEEN), piece(b"q"));
+        assert_eq!(Done(&[][..], KING), piece(b"k"));
 
-        assert_eq!(Done(&[][..], PieceType::Pawn), piece(b"P"));
-        assert_eq!(Done(&[][..], PieceType::Rook), piece(b"R"));
-        assert_eq!(Done(&[][..], PieceType::Knight), piece(b"N"));
-        assert_eq!(Done(&[][..], PieceType::Bishop), piece(b"B"));
-        assert_eq!(Done(&[][..], PieceType::Queen), piece(b"Q"));
-        assert_eq!(Done(&[][..], PieceType::King), piece(b"K"));
+        assert_eq!(Done(&[][..], PAWN), piece(b"P"));
+        assert_eq!(Done(&[][..], ROOK), piece(b"R"));
+        assert_eq!(Done(&[][..], KNIGHT), piece(b"N"));
+        assert_eq!(Done(&[][..], BISHOP), piece(b"B"));
+        assert_eq!(Done(&[][..], QUEEN), piece(b"Q"));
+        assert_eq!(Done(&[][..], KING), piece(b"K"));
     }
 
     #[test]
     fn test_parse_uci() {
-        assert_eq!(Done(&[][..], Move::new_with_promotion(E2, E4, PieceType::Pawn)), uci(b"e2e4p"));
-        assert_eq!(Done(&[][..], Move::new(E2, E4)), uci(b"e2e4"));
-        assert_eq!(Done(&[][..], Move::null()), uci(b"0000"));
+        assert_eq!(Done(&[][..], make_move(SQ_E2, SQ_E4, PAWN)), uci(b"e2e4p"));
+        assert_eq!(Done(&[][..], MOVE_NULL), uci(b"0000"));
     }
 }
