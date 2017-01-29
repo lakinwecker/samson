@@ -535,7 +535,7 @@ pub fn to_square(m: Move) -> Square {
     return Square((m.0 & 0x3F) as i8);
 }
 
-pub fn make_simple_move(from: Square, to: Square) -> Move {
+pub fn make_move_simple(from: Square, to: Square) -> Move {
     return Move((((from.0 as u16) << 6) | (to.0 as u16)));
 }
 
@@ -550,7 +550,7 @@ pub fn promotion_type(m: Move) -> PieceType {
 
 
 // TODO: These could probably be optimized and compile time checked
-pub fn make_promotion_move(from: Square, to: Square, pt: PieceType) -> Move {
+pub fn make_move_with_promotion(from: Square, to: Square, pt: PieceType) -> Move {
     let from = from.0 as u16;
     let to = to.0 as u16;
     let pt = pt.0 as u16;
@@ -559,7 +559,7 @@ pub fn make_promotion_move(from: Square, to: Square, pt: PieceType) -> Move {
     return Move(promotion | ((pt - knight) << 12) | (from << 6) | to);
 }
 
-pub fn make_en_passant_move(from: Square, to: Square) -> Move {
+pub fn make_move_(from: Square, to: Square) -> Move {
     let from = from.0 as u16;
     let to = to.0 as u16;
     let enpassant = ENPASSANT.0 as u16;
@@ -888,20 +888,20 @@ mod tests {
     }
     #[test]
     fn test_from_square() {
-        assert_eq!(SQ_A1, from_square(make_simple_move(SQ_A1, SQ_A2)));
-        assert_eq!(SQ_B3, from_square(make_simple_move(SQ_B3, SQ_B4)));
-        assert_eq!(SQ_A3, from_square(make_simple_move(SQ_A3, SQ_A4)));
-        assert_eq!(SQ_A2, from_square(make_simple_move(SQ_A2, SQ_A3)));
+        assert_eq!(SQ_A1, from_square(make_move_simple(SQ_A1, SQ_A2)));
+        assert_eq!(SQ_B3, from_square(make_move_simple(SQ_B3, SQ_B4)));
+        assert_eq!(SQ_A3, from_square(make_move_simple(SQ_A3, SQ_A4)));
+        assert_eq!(SQ_A2, from_square(make_move_simple(SQ_A2, SQ_A3)));
     }
     #[test]
     fn test_to_square() {
-        assert_eq!(SQ_A2, to_square(make_simple_move(SQ_A1, SQ_A2)));
-        assert_eq!(SQ_A3, to_square(make_simple_move(SQ_A2, SQ_A3)));
+        assert_eq!(SQ_A2, to_square(make_move_simple(SQ_A1, SQ_A2)));
+        assert_eq!(SQ_A3, to_square(make_move_simple(SQ_A2, SQ_A3)));
     }
     #[test]
     fn test_is_move_ok() {
-        assert_eq!(true, is_move_ok(make_simple_move(SQ_A1, SQ_A2)));
-        assert_eq!(true, is_move_ok(make_simple_move(SQ_A2, SQ_A3)));
+        assert_eq!(true, is_move_ok(make_move_simple(SQ_A1, SQ_A2)));
+        assert_eq!(true, is_move_ok(make_move_simple(SQ_A2, SQ_A3)));
         assert_eq!(false, is_move_ok(MOVE_NULL));
         assert_eq!(false, is_move_ok(MOVE_NONE));
     }

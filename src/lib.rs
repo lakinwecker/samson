@@ -29,5 +29,5 @@ extern crate regex;
 extern crate nom;
 
 pub mod types;
-//pub mod parser;
+pub mod parser;
 
