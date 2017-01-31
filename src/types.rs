@@ -138,13 +138,13 @@ macro_rules! const_vals {
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct Key(u64);
+pub struct Key(pub u64);
 enable_bitwise_operators_on! { Key }
 
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct Bitboard(u64);
+pub struct Bitboard(pub u64);
 enable_bitwise_operators_on! { Bitboard }
 
 pub const MAX_MOVES: i16 = 256;
@@ -163,7 +163,7 @@ pub const MAX_PLY: i16   = 128;
 /// any normal move destination square is always different from origin square
 /// while MOVE_NONE and MOVE_NULL have the same origin and destination square.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct Move(u16);
+pub struct Move(pub u16);
 enable_bitwise_operators_on! { Move }
 const_vals! { Move:
         MOVE_NONE = 0,
@@ -172,7 +172,7 @@ const_vals! { Move:
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct MoveType(u16);
+pub struct MoveType(pub u16);
 enable_bitwise_operators_on! { MoveType }
 const_vals! { MoveType:
     NORMAL = 0,
@@ -183,7 +183,7 @@ const_vals! { MoveType:
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct Color(i8);
+pub struct Color(pub i8);
 enable_bitwise_operators_on! { Color }
 enable_full_operators_on! { Color, i8 }
 const_vals! { Color:
@@ -199,7 +199,7 @@ impl Neg for Color {
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct CastlingSide(u16);
+pub struct CastlingSide(pub u16);
 enable_bitwise_operators_on! { CastlingSide }
 const_vals! { CastlingSide:
     KING_SIDE = 0,
@@ -218,7 +218,7 @@ impl BitOr<Color> for CastlingSide {
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct CastlingRight(u16);
+pub struct CastlingRight(pub u16);
 enable_bitwise_operators_on! { CastlingRight }
 const_vals! { CastlingRight:
     NO_CASTLING = 0,
@@ -242,7 +242,7 @@ template<Color C, CastlingSide S> struct MakeCastling {
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct Phase(u16);
+pub struct Phase(pub u16);
 enable_bitwise_operators_on! { Phase }
 const_vals! { Phase:
     PHASE_ENDGAME = 3,
@@ -254,7 +254,7 @@ const_vals! { Phase:
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct ScaleFactor(u8);
+pub struct ScaleFactor(pub u8);
 enable_bitwise_operators_on! { ScaleFactor }
 const_vals! { Phase:
     SCALE_FACTOR_DRAW = 0,
@@ -266,7 +266,7 @@ const_vals! { Phase:
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct Bound(u8);
+pub struct Bound(pub u8);
 enable_bitwise_operators_on! { Bound }
 const_vals! { Bound:
     BOUND_NONE = 0,
@@ -277,7 +277,7 @@ const_vals! { Bound:
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct Value(i32);
+pub struct Value(pub i32);
 enable_bitwise_operators_on! { Value }
 enable_full_operators_on! { Value, i32 }
 enable_signed_operators_on! { Value }
@@ -318,7 +318,7 @@ impl SubAssign<i32> for Value {
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct PieceType(i8);
+pub struct PieceType(pub i8);
 enable_bitwise_operators_on! { PieceType }
 enable_full_operators_on! { PieceType, i8 }
 enable_signed_operators_on! { PieceType }
@@ -330,7 +330,7 @@ const_vals! { PieceType:
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct Piece(i8);
+pub struct Piece(pub i8);
 enable_bitwise_operators_on! { Piece }
 enable_full_operators_on! { Piece, i8 }
 const_vals! { Piece:
@@ -352,7 +352,7 @@ pub static PIECES: &'static [Piece] = &[ W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_Q
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct Depth(i16);
+pub struct Depth(pub i16);
 enable_bitwise_operators_on!{ Depth }
 enable_full_operators_on! { Depth, i16 }
 enable_signed_operators_on! { Depth }
@@ -370,7 +370,7 @@ const_vals! { Depth:
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct Square(i8);
+pub struct Square(pub i8);
 enable_bitwise_operators_on!{ Square }
 enable_full_operators_on! { Square, i8 }
 const_vals! { Square:
@@ -402,9 +402,20 @@ impl Neg for Square {
     fn neg(self) -> Square { Square(self.0 ^ SQ_A8.0) }
 }
 
+/*pub static SQUARES: &'static [File] = &[
+    SQ_A1, SQ_A2, SQ_A3, SQ_A4, SQ_A5, SQ_A6, SQ_A7, SQ_A8,
+    SQ_B1, SQ_B2, SQ_B3, SQ_B4, SQ_B5, SQ_B6, SQ_B7, SQ_B8,
+    SQ_C1, SQ_C2, SQ_C3, SQ_C4, SQ_C5, SQ_C6, SQ_C7, SQ_C8,
+    SQ_D1, SQ_D2, SQ_D3, SQ_D4, SQ_D5, SQ_D6, SQ_D7, SQ_D8,
+    SQ_E1, SQ_E2, SQ_E3, SQ_E4, SQ_E5, SQ_E6, SQ_E7, SQ_E8,
+    SQ_F1, SQ_F2, SQ_F3, SQ_F4, SQ_F5, SQ_F6, SQ_F7, SQ_F8,
+    SQ_G1, SQ_G2, SQ_G3, SQ_G4, SQ_G5, SQ_G6, SQ_G7, SQ_G8,
+    SQ_A1, SQ_A2, SQ_A3, SQ_A4, SQ_A5, SQ_A6, SQ_A7, SQ_A8,
+];*/
+
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct File(i8);
+pub struct File(pub i8);
 enable_bitwise_operators_on!{ File }
 enable_full_operators_on! { File, i8 }
 enable_signed_operators_on! { File }
@@ -415,7 +426,7 @@ pub static FILES: &'static [File] = &[ FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, F
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct Rank(i8);
+pub struct Rank(pub i8);
 enable_bitwise_operators_on!{ Rank }
 enable_full_operators_on! { Rank, i8 }
 enable_signed_operators_on! { Rank }
@@ -430,7 +441,7 @@ pub static RANKS: &'static [Rank] = &[ RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, R
 /// and the upper 16 bits are used to store the middlegame value. Take some
 /// care to avoid left-shifting a signed int to avoid undefined behavior.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub struct Score(u32);
+pub struct Score(pub u32);
 enable_bitwise_operators_on!{ Score }
 enable_base_operators_on! { Score, u32 }
 const_vals! { Score:
