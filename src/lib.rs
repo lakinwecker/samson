@@ -19,6 +19,7 @@
 //
 // Shamelessly patterned after the amazing Stockfish
 //------------------------------------------------------------------------------
+#![feature(cfg_target_feature)]
 
 #[macro_use]
 extern crate lazy_static;

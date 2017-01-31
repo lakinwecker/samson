@@ -17,6 +17,10 @@
 
 use super::types::*;
 
+// De Bruijn sequences. See chessprogramming.wikispaces.com/BitScan
+pub const DEBRUIJN_64: u64 = 0x3F79D71B4CB0A89u64;
+pub const DEBRUIJN_32: u32 = 0x783A9B23u32;
+
 pub const DARK_SQUARES: Bitboard = Bitboard(0xAA55AA55AA55AA55u64);
 
 pub const FILE_ABB: Bitboard = Bitboard(0x0101010101010101u64);
@@ -37,16 +41,51 @@ pub const RANK_6BB: Bitboard = Bitboard(RANK_1BB.0 << (8 * 5));
 pub const RANK_7BB: Bitboard = Bitboard(RANK_1BB.0 << (8 * 6));
 pub const RANK_8BB: Bitboard = Bitboard(RANK_1BB.0 << (8 * 7));
 
+// popcount16() counts the non-zero bits using SWAR-Popcount algorithm
+pub fn popcount16(u: u16) ->  u8 {
+    let mut u = u - (u >> 1) & 0x5555u16;
+    u = ((u >> 2) & 0x3333u16) + (u & 0x3333u16);
+    u = ((u >> 4) + u) & 0x0F0Fu16;
+    ((u * 0x0101u16) >> 8) as u8
+}
+
+// bsf_index() returns the index into BSFTable[] to look up the bitscan. Uses
+// Matt Taylor's folding for 32 bit case, extended to 64 bit by Kim Walisch.
+#[cfg(target_pointer_width="32")]
+pub fn bsf_index(b: Bitboard) -> usize {
+    let b = b.0 ^ (b.0 - 1);
+    ((unsigned(b) ^ unsigned(b >> 32)) * DEBRUIJN_32) >> 26
+}
+#[cfg(target_pointer_width="64")]
+pub fn bsf_index(b: Bitboard) -> usize {
+    let b = b.0 ^ (b.0 - 1);
+    ((b * DEBRUIJN_64) >> 58) as usize
+}
+
 lazy_static! {
+    pub static ref POPCNT_16: [u8; 1<<16] = {
+        let mut popcnt_16 = [0; 1<<16];
+        for i in 0..(1<<16) {
+            popcnt_16[i] = popcount16(i as u16);
+        }
+        popcnt_16
+    };
     /*pub static ref SQUARE_DISTANCE: &'static [[i32; SQUARE_NB]; SQUARE_NB] = {
 
     };*/
-    pub static ref SQUARE_BB: [Bitboard; 65] = {
-        let mut square_bb = [Bitboard(0); 65];
+    pub static ref SQUARE_BB: [Bitboard; 64] = {
+        let mut square_bb = [Bitboard(0); 64];
         for s in (SQ_A1.0)..(SQ_H8.0) {
             square_bb[s as usize] = Bitboard(1u64 << s);
         }
         square_bb
+    };
+    pub static ref BSF_TABLE: [Square; 64] = {
+        let mut bsf_table = [Square(0); 64];
+        for s in (SQ_A1.0)..(SQ_H8.0) {
+            bsf_table[bsf_index(SQUARE_BB[s as usize])] = Square(s);
+        }
+        bsf_table
     };
 
     /*
