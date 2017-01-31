@@ -27,80 +27,80 @@ use std::ops::*;
 
 ///-----------------------------------------------------------------------------
 macro_rules! enable_bitwise_operators_on {
-	($type_: ident) => {
-		impl BitAnd for $type_ {
+    ($type_: ident) => {
+        impl BitAnd for $type_ {
             type Output = Self;
-			fn bitand(self, rhs: Self) -> $type_ { $type_(self.0 & rhs.0) }
-		}
-		impl BitAndAssign for $type_ {
-			fn bitand_assign(&mut self, rhs: Self) { *self = $type_(self.0 & rhs.0) }
-		}
-		impl BitOr for $type_ {
+            fn bitand(self, rhs: Self) -> $type_ { $type_(self.0 & rhs.0) }
+        }
+        impl BitAndAssign for $type_ {
+            fn bitand_assign(&mut self, rhs: Self) { *self = $type_(self.0 & rhs.0) }
+        }
+        impl BitOr for $type_ {
             type Output = Self;
-			fn bitor(self, rhs: Self) -> $type_ { $type_(self.0 | rhs.0) }
-		}
-		impl BitOrAssign for $type_ {
-			fn bitor_assign(&mut self, rhs: Self) { *self = $type_(self.0 | rhs.0) }
-		}
-		impl BitXor for $type_ {
+            fn bitor(self, rhs: Self) -> $type_ { $type_(self.0 | rhs.0) }
+        }
+        impl BitOrAssign for $type_ {
+            fn bitor_assign(&mut self, rhs: Self) { *self = $type_(self.0 | rhs.0) }
+        }
+        impl BitXor for $type_ {
             type Output = Self;
-			fn bitxor(self, rhs: Self) -> $type_ { $type_(self.0 ^ rhs.0) }
-		}
-		impl BitXorAssign for $type_ {
-			fn bitxor_assign(&mut self, rhs: Self) { *self = $type_(self.0 ^ rhs.0) }
-		}
-		impl Shl<$type_> for $type_ {
+            fn bitxor(self, rhs: Self) -> $type_ { $type_(self.0 ^ rhs.0) }
+        }
+        impl BitXorAssign for $type_ {
+            fn bitxor_assign(&mut self, rhs: Self) { *self = $type_(self.0 ^ rhs.0) }
+        }
+        impl Shl<$type_> for $type_ {
             type Output = Self;
-			fn shl(self, rhs: Self) -> $type_ { $type_(self.0 << rhs.0) }
-		}
-		impl ShlAssign<$type_> for $type_ {
-			fn shl_assign(&mut self, rhs: Self) { *self = $type_(self.0 << rhs.0) }
-		}
-		impl Shr<$type_> for $type_ {
+            fn shl(self, rhs: Self) -> $type_ { $type_(self.0 << rhs.0) }
+        }
+        impl ShlAssign<$type_> for $type_ {
+            fn shl_assign(&mut self, rhs: Self) { *self = $type_(self.0 << rhs.0) }
+        }
+        impl Shr<$type_> for $type_ {
             type Output = Self;
-			fn shr(self, rhs: Self) -> $type_ { $type_(self.0 >> rhs.0) }
-		}
-		impl ShrAssign<$type_> for $type_ {
-			fn shr_assign(&mut self, rhs: Self) { *self = $type_(self.0 >> rhs.0) }
-		}
-		impl Not for $type_ {
-			type Output = $type_;
-			fn not(self) -> $type_ { $type_(!self.0) }
-		}
-	}
+            fn shr(self, rhs: Self) -> $type_ { $type_(self.0 >> rhs.0) }
+        }
+        impl ShrAssign<$type_> for $type_ {
+            fn shr_assign(&mut self, rhs: Self) { *self = $type_(self.0 >> rhs.0) }
+        }
+        impl Not for $type_ {
+            type Output = $type_;
+            fn not(self) -> $type_ { $type_(!self.0) }
+        }
+    }
 }
 
 ///-----------------------------------------------------------------------------
 macro_rules! enable_base_operators_on {
-	($type_: ident, $integral_type_: ident) => {
-		impl Add for $type_ {
+    ($type_: ident, $integral_type_: ident) => {
+        impl Add for $type_ {
             type Output = Self;
-			fn add(self, rhs: Self) -> $type_ { $type_(self.0 + rhs.0) }
-		}
-		impl Sub for $type_ {
+            fn add(self, rhs: Self) -> $type_ { $type_(self.0 + rhs.0) }
+        }
+        impl Sub for $type_ {
             type Output = Self;
-			fn sub(self, rhs: Self) -> $type_ { $type_(self.0 - rhs.0) }
-		}
-		impl Mul<$integral_type_> for $type_ {
+            fn sub(self, rhs: Self) -> $type_ { $type_(self.0 - rhs.0) }
+        }
+        impl Mul<$integral_type_> for $type_ {
             type Output = Self;
-			fn mul(self, rhs: $integral_type_) -> $type_ { $type_(self.0 * rhs) }
-		}
+            fn mul(self, rhs: $integral_type_) -> $type_ { $type_(self.0 * rhs) }
+        }
 
-		impl AddAssign for $type_ {
-			fn add_assign(&mut self, rhs: Self) { *self = $type_(self.0 + rhs.0) }
-		}
-		impl SubAssign for $type_ {
-			fn sub_assign(&mut self, rhs: Self) { *self = $type_(self.0 - rhs.0) }
-		}
+        impl AddAssign for $type_ {
+            fn add_assign(&mut self, rhs: Self) { *self = $type_(self.0 + rhs.0) }
+        }
+        impl SubAssign for $type_ {
+            fn sub_assign(&mut self, rhs: Self) { *self = $type_(self.0 - rhs.0) }
+        }
         impl MulAssign<$integral_type_> for $type_ {
-			fn mul_assign(&mut self, rhs: $integral_type_) { *self = $type_(self.0 * rhs) }
-		}
-	}
+            fn mul_assign(&mut self, rhs: $integral_type_) { *self = $type_(self.0 * rhs) }
+        }
+    }
 }
 
 ///-----------------------------------------------------------------------------
 macro_rules! enable_signed_operators_on {
-	($type_: ident) => {
+    ($type_: ident) => {
         impl Neg for $type_ {
             type Output = Self;
             fn neg(self) -> $type_ { $type_(-self.0) }
@@ -110,29 +110,29 @@ macro_rules! enable_signed_operators_on {
 
 ///-----------------------------------------------------------------------------
 macro_rules! enable_full_operators_on {
-	($type_: ident, $integral_type_: ident) => {
+    ($type_: ident, $integral_type_: ident) => {
         enable_base_operators_on! { $type_, $integral_type_ }
-		impl Div for $type_ {
+        impl Div for $type_ {
             type Output = Self;
-			fn div(self, rhs: Self) -> $type_ { $type_(self.0 / rhs.0) }
-		}
-		impl Div<$integral_type_> for $type_ {
+            fn div(self, rhs: Self) -> $type_ { $type_(self.0 / rhs.0) }
+        }
+        impl Div<$integral_type_> for $type_ {
             type Output = Self;
-			fn div(self, rhs: $integral_type_) -> $type_ { $type_(self.0 / rhs) }
-		}
+            fn div(self, rhs: $integral_type_) -> $type_ { $type_(self.0 / rhs) }
+        }
         impl DivAssign<$integral_type_> for $type_ {
-			fn div_assign(&mut self, rhs: $integral_type_) { *self = $type_(self.0 / rhs) }
-		}
-	}
+            fn div_assign(&mut self, rhs: $integral_type_) { *self = $type_(self.0 / rhs) }
+        }
+    }
 }
 
 ///-----------------------------------------------------------------------------
 macro_rules! const_vals {
-	($type_: ident: $( $name_: ident = $value_: expr ),* ) => {
+    ($type_: ident: $( $name_: ident = $value_: expr ),* ) => {
         $(
             pub const $name_: $type_ = $type_($value_);
         )*
-	}
+    }
 }
 
 
