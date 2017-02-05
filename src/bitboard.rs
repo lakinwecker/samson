@@ -42,31 +42,38 @@ pub const RANK_7BB: Bitboard = Bitboard(RANK_1BB.0 << (8 * 6));
 pub const RANK_8BB: Bitboard = Bitboard(RANK_1BB.0 << (8 * 7));
 
 // popcount16() counts the non-zero bits using SWAR-Popcount algorithm
-pub fn popcount16(u: u16) ->  u8 {
-    let mut u = u - (u >> 1) & 0x5555u16;
-    u = ((u >> 2) & 0x3333u16) + (u & 0x3333u16);
-    u = ((u >> 4) + u) & 0x0F0Fu16;
-    ((u * 0x0101u16) >> 8) as u8
+pub fn popcount16(u: u32) ->  u8 {
+    let mut u = u;
+    u -= (u >> 1) & 0x5555u32;
+    u = ((u >> 2) & 0x3333u32) + (u & 0x3333u32);
+    u = ((u >> 4) + u) & 0x0F0Fu32;
+    ((u * 0x0101u32) >> 8) as u8
 }
 
 // bsf_index() returns the index into BSFTable[] to look up the bitscan. Uses
 // Matt Taylor's folding for 32 bit case, extended to 64 bit by Kim Walisch.
 #[cfg(target_pointer_width="32")]
 pub fn bsf_index(b: Bitboard) -> usize {
-    let b = b.0 ^ (b.0 - 1);
+    let mut b = b.0;
+    b ^= b - 1;
     ((unsigned(b) ^ unsigned(b >> 32)) * DEBRUIJN_32) >> 26
 }
 #[cfg(target_pointer_width="64")]
 pub fn bsf_index(b: Bitboard) -> usize {
-    let b = b.0 ^ (b.0 - 1);
+    let mut b = b.0;
+    b ^= b - 1;
     ((b * DEBRUIJN_64) >> 58) as usize
+}
+
+pub fn more_than_one(b: Bitboard) -> bool {
+  return b.0 & (b.0 - 1) != 0
 }
 
 lazy_static! {
     pub static ref POPCNT_16: [u8; 1<<16] = {
         let mut popcnt_16 = [0; 1<<16];
         for i in 0..(1<<16) {
-            popcnt_16[i] = popcount16(i as u16);
+            popcnt_16[i] = popcount16(i as u32);
         }
         popcnt_16
     };
@@ -102,4 +109,66 @@ lazy_static! {
     pub Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
     pub Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];*/
 
+}
+
+///-----------------------------------------------------------------------------
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_popcnt_16() {
+        assert_eq!(0, POPCNT_16[0b0000]);
+        assert_eq!(0, popcount16(0b0000));
+        assert_eq!(1, POPCNT_16[0b0001]);
+        assert_eq!(1, popcount16(0b0001));
+        assert_eq!(1, POPCNT_16[0b0010]);
+        assert_eq!(1, popcount16(0b0010));
+        assert_eq!(2, POPCNT_16[0b0011]);
+        assert_eq!(2, popcount16(0b0011));
+        assert_eq!(1, POPCNT_16[0b0100]);
+        assert_eq!(1, popcount16(0b0100));
+        assert_eq!(2, POPCNT_16[0b0101]);
+        assert_eq!(2, popcount16(0b0101));
+        assert_eq!(2, POPCNT_16[0b0110]);
+        assert_eq!(2, popcount16(0b0110));
+        assert_eq!(3, POPCNT_16[0b0111]);
+        assert_eq!(3, popcount16(0b0111));
+        assert_eq!(1, POPCNT_16[0b1000]);
+        assert_eq!(1, popcount16(0b1000));
+        assert_eq!(2, POPCNT_16[0b1001]);
+        assert_eq!(2, popcount16(0b1001));
+        assert_eq!(2, POPCNT_16[0b1010]);
+        assert_eq!(2, popcount16(0b1010));
+        assert_eq!(3, POPCNT_16[0b1011]);
+        assert_eq!(3, popcount16(0b1011));
+        assert_eq!(2, POPCNT_16[0b1100]);
+        assert_eq!(2, popcount16(0b1100));
+        assert_eq!(3, POPCNT_16[0b1101]);
+        assert_eq!(3, popcount16(0b1101));
+        assert_eq!(3, POPCNT_16[0b1110]);
+        assert_eq!(3, popcount16(0b1110));
+        assert_eq!(4, POPCNT_16[0b1111]);
+        assert_eq!(4, popcount16(0b1111));
+
+        assert_eq!(1, POPCNT_16[2<<3]);
+        assert_eq!(1, popcount16(2<<3));
+        assert_eq!(1, POPCNT_16[2<<4]);
+        assert_eq!(1, popcount16(2<<4));
+    }
+    #[test]
+    fn test_more_than_one() {
+        assert_eq!(false, more_than_one(Bitboard(0b0001)));
+        assert_eq!(false, more_than_one(Bitboard(0b0010)));
+        assert_eq!(false, more_than_one(Bitboard(0b0100)));
+        assert_eq!(false, more_than_one(Bitboard(0b1000)));
+        assert_eq!(true, more_than_one(Bitboard(0b0011)));
+        assert_eq!(true, more_than_one(Bitboard(0b0110)));
+        assert_eq!(true, more_than_one(Bitboard(0b1100)));
+        assert_eq!(true, more_than_one(Bitboard(0b1001)));
+        assert_eq!(true, more_than_one(Bitboard(0b0111)));
+        assert_eq!(true, more_than_one(Bitboard(0b1110)));
+        assert_eq!(true, more_than_one(Bitboard(0b1110)));
+        assert_eq!(true, more_than_one(Bitboard(0b1111)));
+    }
 }
