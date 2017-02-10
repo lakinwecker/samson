@@ -1,4 +1,4 @@
-// lwchess - An engine focused on teaching humans.
+// samson - An engine focused on teaching humans.
 // 
 // Copyright (C) 2017 Lakin Wecker <lakin@wecker.ca>
 // 
@@ -14,6 +14,8 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+// Note that this is heavily based on the awesome stockfish engine.
 
 use super::types::*;
 

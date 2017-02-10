@@ -1,4 +1,4 @@
-// lwchess - An engine focused on teaching humans.
+// samson - An engine focused on teaching humans.
 // 
 // Copyright (C) 2017 Lakin Wecker <lakin@wecker.ca>
 // 
@@ -24,6 +24,9 @@ use std::ops::*;
 // get compile time checking when appropriate.
 //
 // http://stackoverflow.com/questions/24831573/automatically-implement-traits-of-enclosed-type-for-rust-newtypes-tuple-structs
+
+
+// Note that this is heavily based on the awesome stockfish engine.
 
 ///-----------------------------------------------------------------------------
 macro_rules! enable_bitwise_operators_on {

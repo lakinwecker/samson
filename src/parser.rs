@@ -1,5 +1,6 @@
-// This file is part of the lwchess library.
-// Copyright (C) 2016 Lakin Wecker <lakin@wecker.ca>
+// This file is part of the samson library.
+//
+// Copyright (C) 2017 Lakin Wecker <lakin@wecker.ca>
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by

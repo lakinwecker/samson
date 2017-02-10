@@ -1,5 +1,6 @@
-// This file is part of the lwchess library.
-// Copyright (C) 2016 Lakin Wecker <lakin@wecker.ca>
+// This file is part of the samson library.
+//
+// Copyright (C) 2017 Lakin Wecker <lakin@wecker.ca>
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,7 +20,11 @@
 //
 // Shamelessly patterned after the amazing Stockfish
 //------------------------------------------------------------------------------
+#![feature(associated_consts)]
 #![feature(cfg_target_feature)]
+#![feature(asm)]
+#![feature(field_init_shorthand)]
+
 
 #[macro_use]
 extern crate lazy_static;
@@ -29,7 +34,13 @@ extern crate regex;
 #[macro_use]
 extern crate nom;
 
+
 pub mod types;
 pub mod parser;
 pub mod bitboard;
+pub mod game;
+
+// temporarily stolen from shakmaty
+// TODO: properly depend on shakmaty
+pub mod shakmaty;
 
