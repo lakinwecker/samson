@@ -18,6 +18,7 @@
 // Note that this is heavily based on the awesome stockfish engine.
 
 use super::types::*;
+use std::ops::*;
 
 // De Bruijn sequences. See chessprogramming.wikispaces.com/BitScan
 pub const DEBRUIJN_64: u64 = 0x3F79D71B4CB0A89u64;
@@ -112,6 +113,36 @@ lazy_static! {
     pub Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];*/
 
 }
+impl BitAnd<Square> for Bitboard {
+    type Output = Self;
+    fn bitand(self, s: Square) -> Bitboard { self & SQUARE_BB[s.0 as usize] }
+}
+impl BitOr<Square> for Bitboard {
+    type Output = Self;
+    fn bitor(self, s: Square) -> Bitboard { self | SQUARE_BB[s.0 as usize] }
+}
+impl BitOrAssign<Square> for Bitboard {
+    fn bitor_assign(&mut self, s: Square) { *self = Bitboard(self.0 | SQUARE_BB[s.0 as usize].0) }
+}
+// TODO: confirm that ^ is xor
+impl BitXor<Square> for Bitboard {
+    type Output = Self;
+    fn bitxor(self, s: Square) -> Bitboard { self ^ SQUARE_BB[s.0 as usize] }
+}
+impl BitXorAssign<Square> for Bitboard {
+    fn bitxor_assign(&mut self, s: Square) { *self = Bitboard(self.0 ^ SQUARE_BB[s.0 as usize].0) }
+}
+/*
+
+inline Bitboard operator^(Bitboard b, Square s) {
+  return b ^ SquareBB[s];
+}
+
+inline bool more_than_one(Bitboard b) {
+  return b & (b - 1);
+}
+*/
+
 
 ///-----------------------------------------------------------------------------
 #[cfg(test)]

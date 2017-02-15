@@ -16,12 +16,12 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 //------------------------------------------------------------------------------
-// Parsers for chess related functionality, including UCI, PGN, etc.
+// Parsers for the uci move spec.
 //
 // Shamelessly patterned after the amazing python-chess library by Niklas Fiekas
 //------------------------------------------------------------------------------
 
-use super::types;
+use super::super::types;
 
 //------------------------------------------------------------------------------
 // UCI related parsers
@@ -99,6 +99,7 @@ named!(pub uci <types::Move>, chain!(
 #[cfg(test)]
 mod tests {
 
+    use super::super::super::*;
     use super::*;
     use nom::IResult::*;
 

@@ -16,27 +16,9 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 //------------------------------------------------------------------------------
-// A pure rust chess library.
-//
-// Shamelessly patterned after the amazing Stockfish
+// Parsers for chess related functionality, including UCI, PGN, etc.
 //------------------------------------------------------------------------------
-#![feature(associated_consts)]
-#![feature(cfg_target_feature)]
-#![feature(asm)]
-#![feature(field_init_shorthand)]
 
+pub mod uci;
+pub mod pgn;
 
-#[macro_use]
-extern crate lazy_static;
-extern crate num;
-extern crate regex;
-extern crate shakmaty;
-
-#[macro_use]
-extern crate nom;
-
-
-pub mod types;
-pub mod parser;
-pub mod bitboard;
-pub mod game;
