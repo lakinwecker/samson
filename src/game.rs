@@ -16,10 +16,16 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // A game representation
+#[derive(Clone, Debug, PartialEq)]
 pub struct Tag {
     pub key: String,
     pub value: String
 }
+#[derive(Clone, Debug, PartialEq)]
 pub struct Game {
     pub tags: Vec<Tag>
+}
+#[derive(Clone, Debug, PartialEq)]
+pub struct NumericAnnotationGlyph {
+    pub num: u64
 }

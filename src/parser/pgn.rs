@@ -23,14 +23,19 @@ use super::super::types;
 use super::super::game;
 use nom::*;
 
+use std::str;
+use std::str::FromStr;
+
 named!(pub string_token, delimited!(char!('"'), escaped!(is_not!("\\\""), '\\', one_of!("\"\\")), char!('"')));
-named!(pub integer_token, call!(digit));
+named!(pub integer_token<u64>, map_res!(map_res!(ws!(digit), str::from_utf8), FromStr::from_str));
 named!(pub period_token, tag!("."));
 named!(pub asterisk_token, tag!("*"));
 named!(pub open_bracket_token, tag!("["));
 named!(pub close_bracket_token, tag!("]"));
-named!(pub nag_token, preceded!(char!('$'), integer_token));
-named!(pub symbol, preceded!(char!('$'), integer_token));
+named!(pub nag_token<game::NumericAnnotationGlyph>,
+    map!(preceded!(char!('$'), integer_token), |i| { game::NumericAnnotationGlyph{num: i} })
+);
+named!(pub symbol_token<&str,&str>, re_find!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
 
 #[cfg(test)]
 mod tests {
@@ -47,10 +52,10 @@ mod tests {
 
     #[test]
     fn test_integer_token() {
-        assert_eq!(Done(&b""[..], &b"111"[..]), integer_token(b"111"));
-        assert_eq!(Done(&b""[..], &b"311"[..]), integer_token(b"311"));
-        assert_eq!(Done(&b"ef"[..], &b"111"[..]), integer_token(b"111ef"));
-        assert_eq!(Done(&b"ef"[..], &b"311"[..]), integer_token(b"311ef"));
+        assert_eq!(Done(&b""[..], 111u64), integer_token(b"111"));
+        assert_eq!(Done(&b""[..], 311u64), integer_token(b"311"));
+        assert_eq!(Done(&b"ef"[..], 111u64), integer_token(b"111ef"));
+        assert_eq!(Done(&b"ef"[..], 311u64), integer_token(b"311ef"));
     }
 
     #[test]
@@ -76,7 +81,12 @@ mod tests {
     }
     #[test]
     fn test_nag_token() {
-        assert_eq!(Done(&b""[..], &b"4"[..]), nag_token(b"$4"));
-        assert_eq!(Done(&b"ef"[..], &b"4"[..]), nag_token(b"$4ef"));
+        assert_eq!(Done(&b""[..], game::NumericAnnotationGlyph{num: 4u64}), nag_token(b"$4"));
+        assert_eq!(Done(&b"ef"[..], game::NumericAnnotationGlyph{num: 4u64}), nag_token(b"$4ef"));
+    }
+    #[test]
+    fn test_symbol_token() {
+        assert_eq!(Done("", "sasd#_+#=:-"), symbol_token("sasd#_+#=:-"));
+        assert_eq!(Done("!()~{}[]", "sasd#_+#=:-"), symbol_token("sasd#_+#=:-!()~{}[]"));
     }
 }
