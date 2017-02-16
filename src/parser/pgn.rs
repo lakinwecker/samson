@@ -29,7 +29,8 @@ named!(pub period_token, tag!("."));
 named!(pub asterisk_token, tag!("*"));
 named!(pub open_bracket_token, tag!("["));
 named!(pub close_bracket_token, tag!("]"));
-//named!(pub nag_token, chain!(char!('$') ~ integer_token));
+named!(pub nag_token, preceded!(char!('$'), integer_token));
+named!(pub symbol, preceded!(char!('$'), integer_token));
 
 #[cfg(test)]
 mod tests {
@@ -72,5 +73,10 @@ mod tests {
     fn test_close_bracket_token() {
         assert_eq!(Done(&b""[..], &b"]"[..]), close_bracket_token(b"]"));
         assert_eq!(Done(&b"ef"[..], &b"]"[..]), close_bracket_token(b"]ef"));
+    }
+    #[test]
+    fn test_nag_token() {
+        assert_eq!(Done(&b""[..], &b"4"[..]), nag_token(b"$4"));
+        assert_eq!(Done(&b"ef"[..], &b"4"[..]), nag_token(b"$4ef"));
     }
 }
