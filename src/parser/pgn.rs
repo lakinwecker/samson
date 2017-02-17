@@ -35,7 +35,14 @@ named!(pub close_bracket_token, tag!("]"));
 named!(pub nag_token<game::NumericAnnotationGlyph>,
     map!(preceded!(char!('$'), integer_token), |i| { game::NumericAnnotationGlyph{num: i} })
 );
-named!(pub symbol_token<&str,&str>, re_find!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
+named!(pub symbol_token, re_bytes_find!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
+named!(pub tag_pair<&[u8], (&[u8], &[u8])>, do_parse!(
+    ws!(open_bracket_token) >>
+    key: ws!(symbol_token) >>
+    value: ws!(string_token) >>
+    ws!(close_bracket_token) >>
+    (key, value)
+));
 
 #[cfg(test)]
 mod tests {
@@ -86,7 +93,11 @@ mod tests {
     }
     #[test]
     fn test_symbol_token() {
-        assert_eq!(Done("", "sasd#_+#=:-"), symbol_token("sasd#_+#=:-"));
-        assert_eq!(Done("!()~{}[]", "sasd#_+#=:-"), symbol_token("sasd#_+#=:-!()~{}[]"));
+        assert_eq!(Done(&b""[..], &b"sasd#_+#=:-"[..]), symbol_token(b"sasd#_+#=:-"));
+        assert_eq!(Done(&b"!()~{}[]"[..], &b"sasd#_+#=:-"[..]), symbol_token(b"sasd#_+#=:-!()~{}[]"));
+    }
+    #[test]
+    fn test_tag_pair() {
+        assert_eq!(Done(&b""[..], (&b"Event"[..], &b"?"[..])), tag_pair(b"[Event \"?\"]"));
     }
 }
