@@ -31,16 +31,30 @@ pub enum FEN {
     NextRank,
     Move(Color),
     Castling,
-    WhiteCastleKingSide,
-    WhiteCastleQueenSide,
-    BlackCastleKingSide,
-    BlackCastleQueenSide,
+    WhiteCastleA,
+    WhiteCastleB,
+    WhiteCastleC,
+    WhiteCastleD,
+    WhiteCastleE,
+    WhiteCastleF,
+    WhiteCastleG,
+    WhiteCastleH,
+    BlackCastleA,
+    BlackCastleB,
+    BlackCastleC,
+    BlackCastleD,
+    BlackCastleE,
+    BlackCastleF,
+    BlackCastleG,
+    BlackCastleH,
+    NoCastling,
     EnPassantTargetSquare(Square),
     HalfMoveClock(u16),
     FullMoveNumber(u16),
     Error(char)
 }
 
+///-----------------------------------------------------------------------------
 named!(fen_char<FEN>, 
     map!(
 	one_of!("rnbkqp/RNBKQP12345678"),
@@ -72,13 +86,47 @@ named!(fen_char<FEN>,
 	}
     )
 );
-named!(pub piece_placement<&[u8], Vec<FEN> >,
-    fold_many0!(fen_char,
-	Vec::new(),
-	|mut acc: Vec<_>, item| {
-	    acc.push(item);
-	    acc
-	}
+
+///-----------------------------------------------------------------------------
+named!(pub piece_placement<&[u8], Vec<FEN> >, many0!(fen_char));
+
+///-----------------------------------------------------------------------------
+named!(pub color_to_move<&[u8], FEN >,
+    map!(one_of!("wb-"), |c: char| { match c { 
+	'w' => FEN::Move(WHITE),
+	'b' => FEN::Move(BLACK),
+	'-' => FEN::Move(NO_COLOR),
+	_ => FEN::Error(c) // This should never happen because of above.
+    }})
+);
+
+///-----------------------------------------------------------------------------
+named!(pub castling_rights<&[u8], Vec<FEN> >,
+    many0!(
+	map!(one_of!("-KQkqABCEDFGHabcdefgh"), |c: char| { match c { 
+	    'k' => FEN::WhiteCastleH,
+	    'q' => FEN::WhiteCastleA,
+	    'a' => FEN::WhiteCastleA,
+	    'b' => FEN::WhiteCastleB,
+	    'c' => FEN::WhiteCastleC,
+	    'd' => FEN::WhiteCastleD,
+	    'e' => FEN::WhiteCastleE,
+	    'f' => FEN::WhiteCastleF,
+	    'g' => FEN::WhiteCastleG,
+	    'h' => FEN::WhiteCastleH,
+	    'K' => FEN::BlackCastleH,
+	    'Q' => FEN::BlackCastleA,
+	    'A' => FEN::BlackCastleA,
+	    'B' => FEN::BlackCastleB,
+	    'C' => FEN::BlackCastleC,
+	    'D' => FEN::BlackCastleD,
+	    'E' => FEN::BlackCastleE,
+	    'F' => FEN::BlackCastleF,
+	    'G' => FEN::BlackCastleG,
+	    'H' => FEN::BlackCastleH,
+	    '-' => FEN::NoCastling,
+	    _ => FEN::Error(c) // This should never happen because of above.
+	}})
     )
 );
 
@@ -119,5 +167,33 @@ mod tests {
 	    Incomplete(_) => assert_eq!(false, true, "Error parsing base fen"),
 	    Error(_) => assert_eq!(false, true, "Error parsing base fen") 
 	}
+    }
+    #[test]
+    fn test_color_to_move() {
+	let fen = &b"w"[..];
+	assert_eq!(Done(&b""[..], FEN::Move(WHITE)), color_to_move(fen));
+    }
+    #[test]
+    fn test_castling_rights() {
+	let fen = &b"KQkq"[..];
+	let expected = vec![
+	    FEN::BlackCastleH, FEN::BlackCastleA, FEN::WhiteCastleH, FEN::WhiteCastleA
+	];
+	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
+	let fen = &b"Kq"[..];
+	let expected = vec![FEN::BlackCastleH, FEN::WhiteCastleA];
+	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
+	let fen = &b"Qk"[..];
+	let expected = vec![FEN::BlackCastleA, FEN::WhiteCastleH];
+	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
+	let fen = &b"-"[..];
+	let expected = vec![FEN::NoCastling];
+	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
+
+	let fen = &b"HAha"[..];
+	let expected = vec![
+	    FEN::BlackCastleH, FEN::BlackCastleA, FEN::WhiteCastleH, FEN::WhiteCastleA
+	];
+	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
     }
 }
