@@ -53,6 +53,8 @@ named!(pub tag_list<&[u8], Vec<game::Tag> >, fold_many0!(tag_pair,
     }
 ));
 
+// TODO: San parsing
+
 #[cfg(test)]
 mod tests {
 
