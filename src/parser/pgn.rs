@@ -27,6 +27,7 @@ use std::str;
 use std::str::FromStr;
 
 named!(pub string_token, delimited!(char!('"'), escaped!(is_not!("\\\""), '\\', one_of!("\"\\")), char!('"')));
+named!(pub string_token_as_string<String>, map_res!(map_res!(string_token, str::from_utf8), String::from_str));
 named!(pub integer_token<u64>, map_res!(map_res!(ws!(digit), str::from_utf8), FromStr::from_str));
 named!(pub period_token, tag!("."));
 named!(pub asterisk_token, tag!("*"));
@@ -36,12 +37,20 @@ named!(pub nag_token<game::NumericAnnotationGlyph>,
     map!(preceded!(char!('$'), integer_token), |i| { game::NumericAnnotationGlyph{num: i} })
 );
 named!(pub symbol_token, re_bytes_find!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
-named!(pub tag_pair<&[u8], (&[u8], &[u8])>, do_parse!(
+named!(pub symbol_token_as_string<String>, map_res!(map_res!(symbol_token, str::from_utf8), String::from_str));
+named!(pub tag_pair<&[u8], game::Tag>, do_parse!(
     ws!(open_bracket_token) >>
-    key: ws!(symbol_token) >>
-    value: ws!(string_token) >>
+    tag_key: ws!(symbol_token_as_string) >>
+    tag_value: ws!(string_token_as_string) >>
     ws!(close_bracket_token) >>
-    (key, value)
+    (game::Tag{key: game::TagKey(tag_key), value: game::TagValue(tag_value)})
+));
+named!(pub tag_list<&[u8], Vec<game::Tag> >, fold_many0!(tag_pair,
+    Vec::new(),
+    |mut acc: Vec<_>, item| {
+        acc.push(item);
+        acc
+    }
 ));
 
 #[cfg(test)]
@@ -56,7 +65,11 @@ mod tests {
         assert_eq!(Done(&b""[..], &b"aaaaaaa"[..]), string_token(b"\"aaaaaaa\""));
         assert_eq!(Done(&b""[..], &b"aaaaaaa \\\" aaaaaaa"[..]), string_token(b"\"aaaaaaa \\\" aaaaaaa\""));
     }
-
+    #[test]
+    fn test_parse_string_as_string() {
+        assert_eq!(Done(&b""[..], String::from_str("aaaaaaa").unwrap()), string_token_as_string(b"\"aaaaaaa\""));
+        assert_eq!(Done(&b""[..], String::from_str("aaaaaaa \\\" aaaaaaa").unwrap()), string_token_as_string(b"\"aaaaaaa \\\" aaaaaaa\""));
+    }
     #[test]
     fn test_integer_token() {
         assert_eq!(Done(&b""[..], 111u64), integer_token(b"111"));
@@ -97,7 +110,13 @@ mod tests {
         assert_eq!(Done(&b"!()~{}[]"[..], &b"sasd#_+#=:-"[..]), symbol_token(b"sasd#_+#=:-!()~{}[]"));
     }
     #[test]
+    fn test_symbol_token_as_string() {
+        assert_eq!(Done(&b""[..], String::from("sasd#_+#=:-")), symbol_token_as_string(b"sasd#_+#=:-"));
+        assert_eq!(Done(&b"!()~{}[]"[..], String::from("sasd#_+#=:-")), symbol_token_as_string(b"sasd#_+#=:-!()~{}[]"));
+    }
+    #[test]
     fn test_tag_pair() {
-        assert_eq!(Done(&b""[..], (&b"Event"[..], &b"?"[..])), tag_pair(b"[Event \"?\"]"));
+        assert_eq!(Done(&b""[..], game::Tag{key: game::TagKey(String::from("Event")), value: game::TagValue(String::from("?"))}), tag_pair(b"[Event \"?\"]"));
+        assert_eq!(Done(&b""[..], game::Tag{key: game::TagKey(String::from("Event")), value: game::TagValue(String::from("Tony Rotella"))}), tag_pair(b"[Event \"Tony Rotella\"]"));
     }
 }

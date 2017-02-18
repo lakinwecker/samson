@@ -17,9 +17,13 @@
 
 // A game representation
 #[derive(Clone, Debug, PartialEq)]
+pub struct TagKey(pub String);
+#[derive(Clone, Debug, PartialEq)]
+pub struct TagValue(pub String);
+#[derive(Clone, Debug, PartialEq)]
 pub struct Tag {
-    pub key: String,
-    pub value: String
+    pub key: TagKey,
+    pub value: TagValue
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct Game {
