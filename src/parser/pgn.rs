@@ -19,7 +19,6 @@
 // Parsers for the PGN import specification.
 //------------------------------------------------------------------------------
 
-use super::super::types;
 use super::super::game;
 use nom::*;
 
@@ -53,12 +52,9 @@ named!(pub tag_list<&[u8], Vec<game::Tag> >, fold_many0!(tag_pair,
     }
 ));
 
-// TODO: San parsing
-
 #[cfg(test)]
 mod tests {
 
-    use super::super::super::*;
     use super::*;
     use nom::IResult::*;
 

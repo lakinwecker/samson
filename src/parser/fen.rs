@@ -20,7 +20,6 @@
 //------------------------------------------------------------------------------
 
 use super::super::types::*;
-use nom::*;
 
 
 ///-----------------------------------------------------------------------------
@@ -133,7 +132,6 @@ named!(pub castling_rights<&[u8], Vec<FEN> >,
 #[cfg(test)]
 mod tests {
 
-    use super::super::super::*;
     use super::*;
     use nom::IResult::*;
 
@@ -193,6 +191,11 @@ mod tests {
 	let fen = &b"HAha"[..];
 	let expected = vec![
 	    FEN::BlackCastleH, FEN::BlackCastleA, FEN::WhiteCastleH, FEN::WhiteCastleA
+	];
+	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
+	let fen = &b"AHah"[..];
+	let expected = vec![
+	    FEN::BlackCastleA, FEN::BlackCastleH, FEN::WhiteCastleA, FEN::WhiteCastleH
 	];
 	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
     }
