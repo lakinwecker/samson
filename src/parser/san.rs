@@ -38,9 +38,7 @@ pub enum Source {
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum Promotion {
     None,
-    Rank(Rank),
-    File(File),
-    Square(Square)
+    PieceType(PieceType),
 }
 
 
@@ -149,23 +147,28 @@ named!(pub san_move<SAN>,
         |(piece, file, rank, capture, square, promotion, promotion_piece)| {
             let piece = if let Some(x) = piece { x } else { PAWN };
             let capture = if let Some(x) = capture { x } else { MoveOrCapture::Move };
+            let promotion = match (promotion, promotion_piece) {
+                (Some(_), Some(promotion_piece)) => Promotion::PieceType(promotion_piece),
+                _ => Promotion::None
+            };
+
             println!("{:?} {:?} {:?} {:?} {:?} {:?} {:?}", piece, file, rank, capture, square, promotion, promotion_piece);
 
-            match (file, rank, square, promotion, promotion_piece) {
-                (Some(f), Some(r), None, None, None) => {
-                    SAN::Move(piece, Source::None, capture, make_square(f, r), Promotion::None)
+            match (file, rank, square) {
+                (Some(f), Some(r), None) => {
+                    SAN::Move(piece, Source::None, capture, make_square(f, r), promotion)
                 },
-                (None, None, Some(square), None, None) => {
-                    SAN::Move(piece, Source::None, capture, square, Promotion::None)
+                (None, None, Some(square)) => {
+                    SAN::Move(piece, Source::None, capture, square, promotion)
                 },
-                (Some(f), None, Some(square), None, None) => {
-                    SAN::Move(piece, Source::File(f), capture, square, Promotion::None)
+                (Some(f), None, Some(square)) => {
+                    SAN::Move(piece, Source::File(f), capture, square, promotion)
                 },
-                (None, Some(r), Some(square), None, None) => {
-                    SAN::Move(piece, Source::Rank(r), capture, square, Promotion::None)
+                (None, Some(r), Some(square)) => {
+                    SAN::Move(piece, Source::Rank(r), capture, square, promotion)
                 },
-                (Some(f), Some(r), Some(square), None, None) => {
-                    SAN::Move(piece, Source::Square(make_square(f, r)), capture, square, Promotion::None)
+                (Some(f), Some(r), Some(square)) => {
+                    SAN::Move(piece, Source::Square(make_square(f, r)), capture, square, promotion)
                 },
                 _ => SAN::InvalidMove
             }
@@ -273,5 +276,8 @@ mod tests {
 
         assert_eq!(Done(&b""[..], SAN::Move(KNIGHT, Source::Square(SQ_F1), MoveOrCapture::Capture, SQ_F3, Promotion::None)), san_move(&b"Nf1xf3"[..]));
         assert_eq!(Done(&b""[..], SAN::Move(ROOK, Source::Square(SQ_D3), MoveOrCapture::Capture, SQ_D1, Promotion::None)), san_move(&b"Rd3xd1"[..]));
+
+        assert_eq!(Done(&b""[..], SAN::Move(PAWN, Source::None, MoveOrCapture::Move, SQ_E8, Promotion::PieceType(QUEEN))), san_move(&b"e8=Q"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(PAWN, Source::File(FILE_F), MoveOrCapture::Capture, SQ_E8, Promotion::PieceType(KNIGHT))), san_move(&b"fxe8=N"[..]));
     }
 }
