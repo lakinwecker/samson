@@ -27,13 +27,28 @@ pub enum MoveOrCapture { Move, Capture }
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+pub enum Source {
+    None,
+    Rank(Rank),
+    File(File),
+    Square(Square)
+}
+
+///-----------------------------------------------------------------------------
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+pub enum Promotion {
+    None,
+    Rank(Rank),
+    File(File),
+    Square(Square)
+}
+
+
+///-----------------------------------------------------------------------------
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum SAN {
-    PieceToSquare(PieceType, MoveOrCapture, Square),
-    PieceRankToSquare(PieceType, Rank, MoveOrCapture, Square),
-    PieceFileToSquare(PieceType, File, MoveOrCapture, Square),
-    PieceSquareToSquare(PieceType, Square, MoveOrCapture, Square),
-    PromotionToSquare(MoveOrCapture, Square, PieceType),
-    Error(char)
+    Move(PieceType, Source, MoveOrCapture, Square, Promotion),
+    InvalidMove
 }
 
 ///-----------------------------------------------------------------------------
@@ -119,123 +134,42 @@ named!(pub san_square<Square>,
 );
 
 ///-----------------------------------------------------------------------------
-named!(pub san_pawn_to_square<SAN>, 
-    do_parse!(
-        square: san_square >>
-        (SAN::PieceToSquare(PAWN, MoveOrCapture::Move, square))
-    )
-);
+named!(pub san_move<SAN>, 
+    map!(
+        do_parse!(
+            piece: opt!(complete!(san_piece)) >>
+            file: opt!(complete!(san_file)) >>
+            rank: opt!(complete!(san_rank)) >>
+            capture: opt!(complete!(san_capture)) >>
+            square: opt!(complete!(san_square)) >>
+            promotion: opt!(complete!(san_promotion)) >>
+            promotion_piece: opt!(complete!(san_piece)) >>
+            (piece, file, rank, capture, square, promotion, promotion_piece)
+        ),
+        |(piece, file, rank, capture, square, promotion, promotion_piece)| {
+            let piece = if let Some(x) = piece { x } else { PAWN };
+            let capture = if let Some(x) = capture { x } else { MoveOrCapture::Move };
+            println!("{:?} {:?} {:?} {:?} {:?} {:?} {:?}", piece, file, rank, capture, square, promotion, promotion_piece);
 
-///-----------------------------------------------------------------------------
-named!(pub san_pawn_captures_square<SAN>, 
-    do_parse!(
-        file: san_file >>
-        capture: san_capture >>
-        square: san_square >>
-        (SAN::PieceFileToSquare(PAWN, file, capture, square))
-    )
-);
-
-///-----------------------------------------------------------------------------
-named!(pub san_piece_to_square<SAN>, 
-    do_parse!(
-        piece: san_piece >>
-        square: san_square >>
-        (SAN::PieceToSquare(piece, MoveOrCapture::Move, square))
-    )
-);
-
-///-----------------------------------------------------------------------------
-named!(pub san_piece_captures_square<SAN>, 
-    do_parse!(
-        piece: san_piece >>
-        capture: san_capture >>
-        square: san_square >>
-        (SAN::PieceToSquare(piece, capture, square))
-    )
-);
-
-///-----------------------------------------------------------------------------
-named!(pub san_piece_file_to_square<SAN>, 
-    do_parse!(
-        piece: san_piece >>
-        file: san_file >>
-        square: san_square >>
-        (SAN::PieceFileToSquare(piece, file, MoveOrCapture::Move, square))
-    )
-);
-
-///-----------------------------------------------------------------------------
-named!(pub san_piece_file_captures_square<SAN>, 
-    do_parse!(
-        piece: san_piece >>
-        file: san_file >>
-        capture: san_capture >>
-        square: san_square >>
-        (SAN::PieceFileToSquare(piece, file, capture, square))
-    )
-);
-
-///-----------------------------------------------------------------------------
-named!(pub san_piece_rank_to_square<SAN>, 
-    do_parse!(
-        piece: san_piece >>
-        rank: san_rank >>
-        square: san_square >>
-        (SAN::PieceRankToSquare(piece, rank, MoveOrCapture::Move, square))
-    )
-);
-
-///-----------------------------------------------------------------------------
-named!(pub san_piece_rank_captures_square<SAN>, 
-    do_parse!(
-        piece: san_piece >>
-        rank: san_rank >>
-        capture: san_capture >>
-        square: san_square >>
-        (SAN::PieceRankToSquare(piece, rank, capture, square))
-    )
-);
-
-///-----------------------------------------------------------------------------
-named!(pub san_piece_square_to_square<SAN>, 
-    do_parse!(
-        piece: san_piece >>
-        square1: san_square >>
-        square2: san_square >>
-        (SAN::PieceSquareToSquare(piece, square1, MoveOrCapture::Move, square2))
-    )
-);
-
-///-----------------------------------------------------------------------------
-named!(pub san_piece_square_captures_square<SAN>, 
-    do_parse!(
-        piece: san_piece >>
-        square1: san_square >>
-        capture: san_capture >>
-        square2: san_square >>
-        (SAN::PieceSquareToSquare(piece, square1, capture, square2))
-    )
-);
-
-///-----------------------------------------------------------------------------
-named!(pub san_promotion_to_square<SAN>, 
-    do_parse!(
-        piece: san_piece >>
-        square1: san_square >>
-        square2: san_square >>
-        (SAN::PieceSquareToSquare(piece, square1, MoveOrCapture::Move, square2))
-    )
-);
-
-///-----------------------------------------------------------------------------
-named!(pub san_piece_square_captures_square<SAN>, 
-    do_parse!(
-        piece: san_piece >>
-        square1: san_square >>
-        capture: san_capture >>
-        square2: san_square >>
-        (SAN::PieceSquareToSquare(piece, square1, capture, square2))
+            match (file, rank, square, promotion, promotion_piece) {
+                (Some(f), Some(r), None, None, None) => {
+                    SAN::Move(piece, Source::None, capture, make_square(f, r), Promotion::None)
+                },
+                (None, None, Some(square), None, None) => {
+                    SAN::Move(piece, Source::None, capture, square, Promotion::None)
+                },
+                (Some(f), None, Some(square), None, None) => {
+                    SAN::Move(piece, Source::File(f), capture, square, Promotion::None)
+                },
+                (None, Some(r), Some(square), None, None) => {
+                    SAN::Move(piece, Source::Rank(r), capture, square, Promotion::None)
+                },
+                (Some(f), Some(r), Some(square), None, None) => {
+                    SAN::Move(piece, Source::Square(make_square(f, r)), capture, square, Promotion::None)
+                },
+                _ => SAN::InvalidMove
+            }
+        }
     )
 );
 
@@ -304,59 +238,40 @@ mod tests {
     }
     #[test]
     fn test_san_pawn_to_square() {
-        assert_eq!(Done(&b""[..], SAN::PieceToSquare(PAWN, MoveOrCapture::Move, SQ_E4)), san_pawn_to_square(&b"e4"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceToSquare(PAWN, MoveOrCapture::Move, SQ_D4)), san_pawn_to_square(&b"d4"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceToSquare(PAWN, MoveOrCapture::Move, SQ_C4)), san_pawn_to_square(&b"c4"[..]));
-    }
-    #[test]
-    fn test_san_pawn_capture_square() {
-        assert_eq!(Done(&b""[..], SAN::PieceFileToSquare(PAWN, FILE_D, MoveOrCapture::Capture, SQ_E4)), san_pawn_captures_square(&b"dxe4"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceFileToSquare(PAWN, FILE_E, MoveOrCapture::Capture, SQ_D4)), san_pawn_captures_square(&b"exd4"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceFileToSquare(PAWN, FILE_D, MoveOrCapture::Capture, SQ_C4)), san_pawn_captures_square(&b"dxc4"[..]));
-    }
-    #[test]
-    fn test_san_piece_to_square() {
-        assert_eq!(Done(&b""[..], SAN::PieceToSquare(KNIGHT, MoveOrCapture::Move, SQ_F3)), san_piece_to_square(&b"Nf3"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceToSquare(BISHOP, MoveOrCapture::Move, SQ_B5)), san_piece_to_square(&b"Bb5"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceToSquare(QUEEN, MoveOrCapture::Move, SQ_D8)), san_piece_to_square(&b"Qd8"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceToSquare(ROOK, MoveOrCapture::Move, SQ_D1)), san_piece_to_square(&b"Rd1"[..]));
-    }
-    #[test]
-    fn test_san_piece_captures_square() {
-        assert_eq!(Done(&b""[..], SAN::PieceToSquare(KNIGHT, MoveOrCapture::Capture, SQ_F3)), san_piece_captures_square(&b"Nxf3"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceToSquare(BISHOP, MoveOrCapture::Capture, SQ_B5)), san_piece_captures_square(&b"Bxb5"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceToSquare(QUEEN, MoveOrCapture::Capture, SQ_D8)), san_piece_captures_square(&b"Qxd8"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceToSquare(ROOK, MoveOrCapture::Capture, SQ_D1)), san_piece_captures_square(&b"Rxd1"[..]));
-    }
-    #[test]
-    fn test_san_piece_file_to_square() {
-        assert_eq!(Done(&b""[..], SAN::PieceFileToSquare(KNIGHT, FILE_E, MoveOrCapture::Move, SQ_F3)), san_piece_file_to_square(&b"Nef3"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceFileToSquare(ROOK, FILE_E, MoveOrCapture::Move, SQ_D1)), san_piece_file_to_square(&b"Red1"[..]));
-    }
-    #[test]
-    fn test_san_piece_file_captures_square() {
-        assert_eq!(Done(&b""[..], SAN::PieceFileToSquare(KNIGHT, FILE_E, MoveOrCapture::Capture, SQ_F3)), san_piece_file_captures_square(&b"Nexf3"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceFileToSquare(ROOK, FILE_E, MoveOrCapture::Capture, SQ_D1)), san_piece_file_captures_square(&b"Rexd1"[..]));
-    }
+        assert_eq!(Done(&b""[..], SAN::Move(PAWN, Source::None, MoveOrCapture::Move, SQ_E4, Promotion::None)), san_move(&b"e4"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(PAWN, Source::None, MoveOrCapture::Move, SQ_D4, Promotion::None)), san_move(&b"d4"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(PAWN, Source::None, MoveOrCapture::Move, SQ_C4, Promotion::None)), san_move(&b"c4"[..]));
 
-    #[test]
-    fn test_san_piece_rank_to_square() {
-        assert_eq!(Done(&b""[..], SAN::PieceRankToSquare(KNIGHT, RANK_2, MoveOrCapture::Move, SQ_F3)), san_piece_rank_to_square(&b"N2f3"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceRankToSquare(ROOK, RANK_3, MoveOrCapture::Move, SQ_D1)), san_piece_rank_to_square(&b"R3d1"[..]));
-    }
-    #[test]
-    fn test_san_piece_rank_captures_square() {
-        assert_eq!(Done(&b""[..], SAN::PieceRankToSquare(KNIGHT, RANK_1, MoveOrCapture::Capture, SQ_F3)), san_piece_rank_captures_square(&b"N1xf3"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceRankToSquare(ROOK, RANK_6, MoveOrCapture::Capture, SQ_D1)), san_piece_rank_captures_square(&b"R6xd1"[..]));
-    }
-    #[test]
-    fn test_san_piece_square_to_square() {
-        assert_eq!(Done(&b""[..], SAN::PieceSquareToSquare(KNIGHT, SQ_F1, MoveOrCapture::Move, SQ_F3)), san_piece_square_to_square(&b"Nf1f3"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceSquareToSquare(ROOK, SQ_D3, MoveOrCapture::Move, SQ_D1)), san_piece_square_to_square(&b"Rd3d1"[..]));
-    }
-    #[test]
-    fn test_san_piece_square_captures_square() {
-        assert_eq!(Done(&b""[..], SAN::PieceSquareToSquare(KNIGHT, SQ_F1, MoveOrCapture::Capture, SQ_F3)), san_piece_square_captures_square(&b"Nf1xf3"[..]));
-        assert_eq!(Done(&b""[..], SAN::PieceSquareToSquare(ROOK, SQ_D3, MoveOrCapture::Capture, SQ_D1)), san_piece_square_captures_square(&b"Rd3xd1"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(PAWN, Source::File(FILE_D), MoveOrCapture::Capture, SQ_E4, Promotion::None)), san_move(&b"dxe4"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(PAWN, Source::File(FILE_E), MoveOrCapture::Capture, SQ_D4, Promotion::None)), san_move(&b"exd4"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(PAWN, Source::File(FILE_D), MoveOrCapture::Capture, SQ_C4, Promotion::None)), san_move(&b"dxc4"[..]));
+
+        assert_eq!(Done(&b""[..], SAN::Move(KNIGHT, Source::None, MoveOrCapture::Move, SQ_F3, Promotion::None)), san_move(&b"Nf3"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(BISHOP, Source::None, MoveOrCapture::Move, SQ_B5, Promotion::None)), san_move(&b"Bb5"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(QUEEN, Source::None, MoveOrCapture::Move, SQ_D8, Promotion::None)), san_move(&b"Qd8"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(ROOK, Source::None, MoveOrCapture::Move, SQ_D1, Promotion::None)), san_move(&b"Rd1"[..]));
+
+        assert_eq!(Done(&b""[..], SAN::Move(KNIGHT, Source::None, MoveOrCapture::Capture, SQ_F3, Promotion::None)), san_move(&b"Nxf3"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(BISHOP, Source::None, MoveOrCapture::Capture, SQ_B5, Promotion::None)), san_move(&b"Bxb5"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(QUEEN, Source::None, MoveOrCapture::Capture, SQ_D8, Promotion::None)), san_move(&b"Qxd8"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(ROOK, Source::None, MoveOrCapture::Capture, SQ_D1, Promotion::None)), san_move(&b"Rxd1"[..]));
+
+        assert_eq!(Done(&b""[..], SAN::Move(KNIGHT, Source::File(FILE_E), MoveOrCapture::Move, SQ_F3, Promotion::None)), san_move(&b"Nef3"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(ROOK, Source::File(FILE_E), MoveOrCapture::Move, SQ_D1, Promotion::None)), san_move(&b"Red1"[..]));
+
+        assert_eq!(Done(&b""[..], SAN::Move(KNIGHT, Source::File(FILE_E), MoveOrCapture::Capture, SQ_F3, Promotion::None)), san_move(&b"Nexf3"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(ROOK, Source::File(FILE_E), MoveOrCapture::Capture, SQ_D1, Promotion::None)), san_move(&b"Rexd1"[..]));
+
+        assert_eq!(Done(&b""[..], SAN::Move(KNIGHT, Source::Rank(RANK_2), MoveOrCapture::Move, SQ_F3, Promotion::None)), san_move(&b"N2f3"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(ROOK, Source::Rank(RANK_3), MoveOrCapture::Move, SQ_D1, Promotion::None)), san_move(&b"R3d1"[..]));
+
+        assert_eq!(Done(&b""[..], SAN::Move(KNIGHT, Source::Rank(RANK_1), MoveOrCapture::Capture, SQ_F3, Promotion::None)), san_move(&b"N1xf3"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(ROOK, Source::Rank(RANK_6), MoveOrCapture::Capture, SQ_D1, Promotion::None)), san_move(&b"R6xd1"[..]));
+        
+        assert_eq!(Done(&b""[..], SAN::Move(KNIGHT, Source::Square(SQ_F1), MoveOrCapture::Move, SQ_F3, Promotion::None)), san_move(&b"Nf1f3"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(ROOK, Source::Square(SQ_D3), MoveOrCapture::Move, SQ_D1, Promotion::None)), san_move(&b"Rd3d1"[..]));
+
+        assert_eq!(Done(&b""[..], SAN::Move(KNIGHT, Source::Square(SQ_F1), MoveOrCapture::Capture, SQ_F3, Promotion::None)), san_move(&b"Nf1xf3"[..]));
+        assert_eq!(Done(&b""[..], SAN::Move(ROOK, Source::Square(SQ_D3), MoveOrCapture::Capture, SQ_D1, Promotion::None)), san_move(&b"Rd3xd1"[..]));
     }
 }
