@@ -295,7 +295,7 @@ mod tests {
         assert_eq!(Done(&b""[..], SQ_H8), san_square(&b"H8"[..]));
     }
     #[test]
-    fn test_san_pawn_to_square() {
+    fn test_san_move_parsing() {
         assert_eq!(Done(&b""[..], SAN::Move(PAWN, Source::None, MoveOrCapture::Move, SQ_E4, Promotion::None, Check::None, MoveAnnotation::None)), san_move(&b"e4"[..]));
         assert_eq!(Done(&b""[..], SAN::Move(PAWN, Source::None, MoveOrCapture::Move, SQ_D4, Promotion::None, Check::None, MoveAnnotation::None)), san_move(&b"d4"[..]));
         assert_eq!(Done(&b""[..], SAN::Move(PAWN, Source::None, MoveOrCapture::Move, SQ_C4, Promotion::None, Check::None, MoveAnnotation::None)), san_move(&b"c4"[..]));
