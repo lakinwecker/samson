@@ -305,5 +305,7 @@ mod tests {
 
         assert_eq!(Done(&b""[..], SAN::Move(PAWN, Source::None, MoveOrCapture::Move, SQ_E8, Promotion::PieceType(QUEEN), Check::Check)), san_move(&b"e8=Q+"[..]));
         assert_eq!(Done(&b""[..], SAN::Move(PAWN, Source::File(FILE_F), MoveOrCapture::Capture, SQ_E8, Promotion::PieceType(KNIGHT), Check::Checkmate)), san_move(&b"fxe8=N#"[..]));
+
+        assert_eq!(Done(&b""[..], SAN::Move(QUEEN, Source::Square(SQ_A6), MoveOrCapture::Capture, SQ_B7, Promotion::None, Check::Checkmate)), san_move(&b"Qa6xb7#"[..]));
     }
 }
