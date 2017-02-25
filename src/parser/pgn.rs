@@ -19,7 +19,7 @@
 // Parsers for the PGN import specification.
 //------------------------------------------------------------------------------
 
-use super::super::game;
+use super::super::game::*;
 use nom::*;
 
 use std::str;
@@ -32,25 +32,19 @@ named!(pub period_token, tag!("."));
 named!(pub asterisk_token, tag!("*"));
 named!(pub open_bracket_token, tag!("["));
 named!(pub close_bracket_token, tag!("]"));
-named!(pub nag_token<game::NumericAnnotationGlyph>,
-    map!(preceded!(char!('$'), integer_token), |i| { game::NumericAnnotationGlyph{num: i} })
+named!(pub nag_token<NumericAnnotationGlyph>,
+    map!(preceded!(char!('$'), integer_token), |i| { NumericAnnotationGlyph{num: i} })
 );
 named!(pub symbol_token, re_bytes_find!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
 named!(pub symbol_token_as_string<String>, map_res!(map_res!(symbol_token, str::from_utf8), String::from_str));
-named!(pub tag_pair<&[u8], game::Tag>, do_parse!(
+named!(pub tag_pair<&[u8], Tag>, do_parse!(
     ws!(open_bracket_token) >>
     tag_key: ws!(symbol_token_as_string) >>
     tag_value: ws!(string_token_as_string) >>
     ws!(close_bracket_token) >>
-    (game::Tag{key: game::TagKey(tag_key), value: game::TagValue(tag_value)})
+    (Tag{key: TagKey(tag_key), value: TagValue(tag_value)})
 ));
-named!(pub tag_list<&[u8], Vec<game::Tag> >, fold_many0!(tag_pair,
-    Vec::new(),
-    |mut acc: Vec<_>, item| {
-        acc.push(item);
-        acc
-    }
-));
+named!(pub tag_list<&[u8], Vec<Tag> >, many0!(ws!(complete!(tag_pair))));
 
 #[cfg(test)]
 mod tests {
@@ -99,8 +93,8 @@ mod tests {
     }
     #[test]
     fn test_nag_token() {
-        assert_eq!(Done(&b""[..], game::NumericAnnotationGlyph{num: 4u64}), nag_token(b"$4"));
-        assert_eq!(Done(&b"ef"[..], game::NumericAnnotationGlyph{num: 4u64}), nag_token(b"$4ef"));
+        assert_eq!(Done(&b""[..], NumericAnnotationGlyph{num: 4u64}), nag_token(b"$4"));
+        assert_eq!(Done(&b"ef"[..], NumericAnnotationGlyph{num: 4u64}), nag_token(b"$4ef"));
     }
     #[test]
     fn test_symbol_token() {
@@ -114,7 +108,19 @@ mod tests {
     }
     #[test]
     fn test_tag_pair() {
-        assert_eq!(Done(&b""[..], game::Tag{key: game::TagKey(String::from("Event")), value: game::TagValue(String::from("?"))}), tag_pair(b"[Event \"?\"]"));
-        assert_eq!(Done(&b""[..], game::Tag{key: game::TagKey(String::from("Event")), value: game::TagValue(String::from("Tony Rotella"))}), tag_pair(b"[Event \"Tony Rotella\"]"));
+        assert_eq!(Done(&b""[..], Tag{key: TagKey(String::from("Event")), value: TagValue(String::from("?"))}), tag_pair(b"[Event \"?\"]"));
+        assert_eq!(Done(&b""[..], Tag{key: TagKey(String::from("Event")), value: TagValue(String::from("Tony Rotella"))}), tag_pair(b"[Event \"Tony Rotella\"]"));
+    }
+    #[test]
+    fn test_tag_list() {
+        assert_eq!(
+            Done(&b""[..], 
+                vec!{
+                    Tag{key: TagKey(String::from("Event")), value: TagValue(String::from("Tony Rotella"))},
+                    Tag{key: TagKey(String::from("Date")), value: TagValue(String::from("2017.01.01"))},
+                }
+            ),
+            tag_list(b"[Event \"Tony Rotella\"]\n[Date \"2017.01.01\"]")
+        );
     }
 }
