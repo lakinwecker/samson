@@ -29,23 +29,7 @@ pub enum FEN {
     Skip(u8),
     NextRank,
     Move(Color),
-    Castling,
-    WhiteCastleA,
-    WhiteCastleB,
-    WhiteCastleC,
-    WhiteCastleD,
-    WhiteCastleE,
-    WhiteCastleF,
-    WhiteCastleG,
-    WhiteCastleH,
-    BlackCastleA,
-    BlackCastleB,
-    BlackCastleC,
-    BlackCastleD,
-    BlackCastleE,
-    BlackCastleF,
-    BlackCastleG,
-    BlackCastleH,
+    Castle(Color, File),
     NoCastling,
     EnPassantTargetSquare(Square),
     HalfMoveClock(u16),
@@ -103,26 +87,26 @@ named!(pub color_to_move<&[u8], FEN >,
 named!(pub castling_rights<&[u8], Vec<FEN> >,
     many0!(
 	map!(one_of!("-KQkqABCEDFGHabcdefgh"), |c: char| { match c { 
-	    'k' => FEN::WhiteCastleH,
-	    'q' => FEN::WhiteCastleA,
-	    'a' => FEN::WhiteCastleA,
-	    'b' => FEN::WhiteCastleB,
-	    'c' => FEN::WhiteCastleC,
-	    'd' => FEN::WhiteCastleD,
-	    'e' => FEN::WhiteCastleE,
-	    'f' => FEN::WhiteCastleF,
-	    'g' => FEN::WhiteCastleG,
-	    'h' => FEN::WhiteCastleH,
-	    'K' => FEN::BlackCastleH,
-	    'Q' => FEN::BlackCastleA,
-	    'A' => FEN::BlackCastleA,
-	    'B' => FEN::BlackCastleB,
-	    'C' => FEN::BlackCastleC,
-	    'D' => FEN::BlackCastleD,
-	    'E' => FEN::BlackCastleE,
-	    'F' => FEN::BlackCastleF,
-	    'G' => FEN::BlackCastleG,
-	    'H' => FEN::BlackCastleH,
+	    'k' => FEN::Castle(WHITE, FILE_H),
+	    'q' => FEN::Castle(WHITE, FILE_A),
+	    'a' => FEN::Castle(WHITE, FILE_A),
+	    'b' => FEN::Castle(WHITE, FILE_B),
+	    'c' => FEN::Castle(WHITE, FILE_C),
+	    'd' => FEN::Castle(WHITE, FILE_D),
+	    'e' => FEN::Castle(WHITE, FILE_E),
+	    'f' => FEN::Castle(WHITE, FILE_F),
+	    'g' => FEN::Castle(WHITE, FILE_G),
+	    'h' => FEN::Castle(WHITE, FILE_H),
+	    'K' => FEN::Castle(BLACK, FILE_H),
+	    'Q' => FEN::Castle(BLACK, FILE_A),
+	    'A' => FEN::Castle(BLACK, FILE_A),
+	    'B' => FEN::Castle(BLACK, FILE_B),
+	    'C' => FEN::Castle(BLACK, FILE_C),
+	    'D' => FEN::Castle(BLACK, FILE_D),
+	    'E' => FEN::Castle(BLACK, FILE_E),
+	    'F' => FEN::Castle(BLACK, FILE_F),
+	    'G' => FEN::Castle(BLACK, FILE_G),
+	    'H' => FEN::Castle(BLACK, FILE_H),
 	    '-' => FEN::NoCastling,
 	    _ => FEN::Error(c) // This should never happen because of above.
 	}})
@@ -175,14 +159,14 @@ mod tests {
     fn test_castling_rights() {
 	let fen = &b"KQkq"[..];
 	let expected = vec![
-	    FEN::BlackCastleH, FEN::BlackCastleA, FEN::WhiteCastleH, FEN::WhiteCastleA
+	    FEN::Castle(BLACK, FILE_H), FEN::Castle(BLACK, FILE_A), FEN::Castle(WHITE, FILE_H), FEN::Castle(WHITE, FILE_A)
 	];
 	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
 	let fen = &b"Kq"[..];
-	let expected = vec![FEN::BlackCastleH, FEN::WhiteCastleA];
+	let expected = vec![FEN::Castle(BLACK, FILE_H), FEN::Castle(WHITE, FILE_A)];
 	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
 	let fen = &b"Qk"[..];
-	let expected = vec![FEN::BlackCastleA, FEN::WhiteCastleH];
+	let expected = vec![FEN::Castle(BLACK, FILE_A), FEN::Castle(WHITE, FILE_H)];
 	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
 	let fen = &b"-"[..];
 	let expected = vec![FEN::NoCastling];
@@ -190,12 +174,12 @@ mod tests {
 
 	let fen = &b"HAha"[..];
 	let expected = vec![
-	    FEN::BlackCastleH, FEN::BlackCastleA, FEN::WhiteCastleH, FEN::WhiteCastleA
+	    FEN::Castle(BLACK, FILE_H), FEN::Castle(BLACK, FILE_A), FEN::Castle(WHITE, FILE_H), FEN::Castle(WHITE, FILE_A)
 	];
 	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
 	let fen = &b"AHah"[..];
 	let expected = vec![
-	    FEN::BlackCastleA, FEN::BlackCastleH, FEN::WhiteCastleA, FEN::WhiteCastleH
+	    FEN::Castle(BLACK, FILE_A), FEN::Castle(BLACK, FILE_H), FEN::Castle(WHITE, FILE_A), FEN::Castle(WHITE, FILE_H)
 	];
 	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
     }
