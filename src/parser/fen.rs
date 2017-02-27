@@ -24,7 +24,7 @@ use super::super::types::*;
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub enum FEN {
+pub enum Node {
     Drop(Piece),
     Skip(u8),
     NextRank,
@@ -38,77 +38,77 @@ pub enum FEN {
 }
 
 ///-----------------------------------------------------------------------------
-named!(fen_char<FEN>, 
+named!(fen_char<Node>, 
     map!(
 	one_of!("rnbkqp/RNBKQP12345678"),
 	|c: char| {
 	    match c {
-		'r' => FEN::Drop(B_ROOK),
-		'n' => FEN::Drop(B_KNIGHT),
-		'b' => FEN::Drop(B_BISHOP),
-		'q' => FEN::Drop(B_QUEEN),
-		'k' => FEN::Drop(B_KING),
-		'p' => FEN::Drop(B_PAWN),
-		'R' => FEN::Drop(W_ROOK),
-		'N' => FEN::Drop(W_KNIGHT),
-		'B' => FEN::Drop(W_BISHOP),
-		'Q' => FEN::Drop(W_QUEEN),
-		'K' => FEN::Drop(W_KING),
-		'P' => FEN::Drop(W_PAWN),
-		'1' => FEN::Skip(1),
-		'2' => FEN::Skip(2),
-		'3' => FEN::Skip(3),
-		'4' => FEN::Skip(4),
-		'5' => FEN::Skip(5),
-		'6' => FEN::Skip(6),
-		'7' => FEN::Skip(7),
-		'8' => FEN::Skip(8),
-		'/' => FEN::NextRank,
-		_ => FEN::Error(c) // This should never happen because of above.
+		'r' => Node::Drop(B_ROOK),
+		'n' => Node::Drop(B_KNIGHT),
+		'b' => Node::Drop(B_BISHOP),
+		'q' => Node::Drop(B_QUEEN),
+		'k' => Node::Drop(B_KING),
+		'p' => Node::Drop(B_PAWN),
+		'R' => Node::Drop(W_ROOK),
+		'N' => Node::Drop(W_KNIGHT),
+		'B' => Node::Drop(W_BISHOP),
+		'Q' => Node::Drop(W_QUEEN),
+		'K' => Node::Drop(W_KING),
+		'P' => Node::Drop(W_PAWN),
+		'1' => Node::Skip(1),
+		'2' => Node::Skip(2),
+		'3' => Node::Skip(3),
+		'4' => Node::Skip(4),
+		'5' => Node::Skip(5),
+		'6' => Node::Skip(6),
+		'7' => Node::Skip(7),
+		'8' => Node::Skip(8),
+		'/' => Node::NextRank,
+		_ => Node::Error(c) // This should never happen because of above.
 	    }
 	}
     )
 );
 
 ///-----------------------------------------------------------------------------
-named!(pub piece_placement<&[u8], Vec<FEN> >, many0!(fen_char));
+named!(pub piece_placement<&[u8], Vec<Node> >, many0!(fen_char));
 
 ///-----------------------------------------------------------------------------
-named!(pub color_to_move<&[u8], FEN >,
+named!(pub color_to_move<&[u8], Node >,
     map!(one_of!("wb-"), |c: char| { match c { 
-	'w' => FEN::Move(WHITE),
-	'b' => FEN::Move(BLACK),
-	'-' => FEN::Move(NO_COLOR),
-	_ => FEN::Error(c) // This should never happen because of above.
+	'w' => Node::Move(WHITE),
+	'b' => Node::Move(BLACK),
+	'-' => Node::Move(NO_COLOR),
+	_ => Node::Error(c) // This should never happen because of above.
     }})
 );
 
 ///-----------------------------------------------------------------------------
-named!(pub castling_rights<&[u8], Vec<FEN> >,
+named!(pub castling_rights<&[u8], Vec<Node> >,
     many0!(
 	map!(one_of!("-KQkqABCEDFGHabcdefgh"), |c: char| { match c { 
-	    'k' => FEN::Castle(WHITE, FILE_H),
-	    'q' => FEN::Castle(WHITE, FILE_A),
-	    'a' => FEN::Castle(WHITE, FILE_A),
-	    'b' => FEN::Castle(WHITE, FILE_B),
-	    'c' => FEN::Castle(WHITE, FILE_C),
-	    'd' => FEN::Castle(WHITE, FILE_D),
-	    'e' => FEN::Castle(WHITE, FILE_E),
-	    'f' => FEN::Castle(WHITE, FILE_F),
-	    'g' => FEN::Castle(WHITE, FILE_G),
-	    'h' => FEN::Castle(WHITE, FILE_H),
-	    'K' => FEN::Castle(BLACK, FILE_H),
-	    'Q' => FEN::Castle(BLACK, FILE_A),
-	    'A' => FEN::Castle(BLACK, FILE_A),
-	    'B' => FEN::Castle(BLACK, FILE_B),
-	    'C' => FEN::Castle(BLACK, FILE_C),
-	    'D' => FEN::Castle(BLACK, FILE_D),
-	    'E' => FEN::Castle(BLACK, FILE_E),
-	    'F' => FEN::Castle(BLACK, FILE_F),
-	    'G' => FEN::Castle(BLACK, FILE_G),
-	    'H' => FEN::Castle(BLACK, FILE_H),
-	    '-' => FEN::NoCastling,
-	    _ => FEN::Error(c) // This should never happen because of above.
+	    'k' => Node::Castle(WHITE, FILE_H),
+	    'q' => Node::Castle(WHITE, FILE_A),
+	    'a' => Node::Castle(WHITE, FILE_A),
+	    'b' => Node::Castle(WHITE, FILE_B),
+	    'c' => Node::Castle(WHITE, FILE_C),
+	    'd' => Node::Castle(WHITE, FILE_D),
+	    'e' => Node::Castle(WHITE, FILE_E),
+	    'f' => Node::Castle(WHITE, FILE_F),
+	    'g' => Node::Castle(WHITE, FILE_G),
+	    'h' => Node::Castle(WHITE, FILE_H),
+	    'K' => Node::Castle(BLACK, FILE_H),
+	    'Q' => Node::Castle(BLACK, FILE_A),
+	    'A' => Node::Castle(BLACK, FILE_A),
+	    'B' => Node::Castle(BLACK, FILE_B),
+	    'C' => Node::Castle(BLACK, FILE_C),
+	    'D' => Node::Castle(BLACK, FILE_D),
+	    'E' => Node::Castle(BLACK, FILE_E),
+	    'F' => Node::Castle(BLACK, FILE_F),
+	    'G' => Node::Castle(BLACK, FILE_G),
+	    'H' => Node::Castle(BLACK, FILE_H),
+	    '-' => Node::NoCastling,
+	    _ => Node::Error(c) // This should never happen because of above.
 	}})
     )
 );
@@ -124,25 +124,25 @@ mod tests {
 	// let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 	let fen = &b"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"[..];
 	let fen_actions = vec![
-	    FEN::Drop(B_ROOK), FEN::Drop(B_KNIGHT), FEN::Drop(B_BISHOP), FEN::Drop(B_QUEEN),
-	    FEN::Drop(B_KING), FEN::Drop(B_BISHOP), FEN::Drop(B_KNIGHT), FEN::Drop(B_ROOK),
-	    FEN::NextRank,
-	    FEN::Drop(B_PAWN), FEN::Drop(B_PAWN), FEN::Drop(B_PAWN), FEN::Drop(B_PAWN),
-	    FEN::Drop(B_PAWN), FEN::Drop(B_PAWN), FEN::Drop(B_PAWN), FEN::Drop(B_PAWN),
-	    FEN::NextRank,
-	    FEN::Skip(8),
-	    FEN::NextRank,
-	    FEN::Skip(8),
-	    FEN::NextRank,
-	    FEN::Skip(8),
-	    FEN::NextRank,
-	    FEN::Skip(8),
-	    FEN::NextRank,
-	    FEN::Drop(W_PAWN), FEN::Drop(W_PAWN), FEN::Drop(W_PAWN), FEN::Drop(W_PAWN),
-	    FEN::Drop(W_PAWN), FEN::Drop(W_PAWN), FEN::Drop(W_PAWN), FEN::Drop(W_PAWN),
-	    FEN::NextRank,
-	    FEN::Drop(W_ROOK), FEN::Drop(W_KNIGHT), FEN::Drop(W_BISHOP), FEN::Drop(W_QUEEN),
-	    FEN::Drop(W_KING), FEN::Drop(W_BISHOP), FEN::Drop(W_KNIGHT), FEN::Drop(W_ROOK)
+	    Node::Drop(B_ROOK), Node::Drop(B_KNIGHT), Node::Drop(B_BISHOP), Node::Drop(B_QUEEN),
+	    Node::Drop(B_KING), Node::Drop(B_BISHOP), Node::Drop(B_KNIGHT), Node::Drop(B_ROOK),
+	    Node::NextRank,
+	    Node::Drop(B_PAWN), Node::Drop(B_PAWN), Node::Drop(B_PAWN), Node::Drop(B_PAWN),
+	    Node::Drop(B_PAWN), Node::Drop(B_PAWN), Node::Drop(B_PAWN), Node::Drop(B_PAWN),
+	    Node::NextRank,
+	    Node::Skip(8),
+	    Node::NextRank,
+	    Node::Skip(8),
+	    Node::NextRank,
+	    Node::Skip(8),
+	    Node::NextRank,
+	    Node::Skip(8),
+	    Node::NextRank,
+	    Node::Drop(W_PAWN), Node::Drop(W_PAWN), Node::Drop(W_PAWN), Node::Drop(W_PAWN),
+	    Node::Drop(W_PAWN), Node::Drop(W_PAWN), Node::Drop(W_PAWN), Node::Drop(W_PAWN),
+	    Node::NextRank,
+	    Node::Drop(W_ROOK), Node::Drop(W_KNIGHT), Node::Drop(W_BISHOP), Node::Drop(W_QUEEN),
+	    Node::Drop(W_KING), Node::Drop(W_BISHOP), Node::Drop(W_KNIGHT), Node::Drop(W_ROOK)
 	];
 	match piece_placement(fen) {
 	    Done(_, actions) => assert_eq!(actions, fen_actions),
@@ -153,33 +153,33 @@ mod tests {
     #[test]
     fn test_color_to_move() {
 	let fen = &b"w"[..];
-	assert_eq!(Done(&b""[..], FEN::Move(WHITE)), color_to_move(fen));
+	assert_eq!(Done(&b""[..], Node::Move(WHITE)), color_to_move(fen));
     }
     #[test]
     fn test_castling_rights() {
 	let fen = &b"KQkq"[..];
 	let expected = vec![
-	    FEN::Castle(BLACK, FILE_H), FEN::Castle(BLACK, FILE_A), FEN::Castle(WHITE, FILE_H), FEN::Castle(WHITE, FILE_A)
+	    Node::Castle(BLACK, FILE_H), Node::Castle(BLACK, FILE_A), Node::Castle(WHITE, FILE_H), Node::Castle(WHITE, FILE_A)
 	];
 	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
 	let fen = &b"Kq"[..];
-	let expected = vec![FEN::Castle(BLACK, FILE_H), FEN::Castle(WHITE, FILE_A)];
+	let expected = vec![Node::Castle(BLACK, FILE_H), Node::Castle(WHITE, FILE_A)];
 	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
 	let fen = &b"Qk"[..];
-	let expected = vec![FEN::Castle(BLACK, FILE_A), FEN::Castle(WHITE, FILE_H)];
+	let expected = vec![Node::Castle(BLACK, FILE_A), Node::Castle(WHITE, FILE_H)];
 	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
 	let fen = &b"-"[..];
-	let expected = vec![FEN::NoCastling];
+	let expected = vec![Node::NoCastling];
 	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
 
 	let fen = &b"HAha"[..];
 	let expected = vec![
-	    FEN::Castle(BLACK, FILE_H), FEN::Castle(BLACK, FILE_A), FEN::Castle(WHITE, FILE_H), FEN::Castle(WHITE, FILE_A)
+	    Node::Castle(BLACK, FILE_H), Node::Castle(BLACK, FILE_A), Node::Castle(WHITE, FILE_H), Node::Castle(WHITE, FILE_A)
 	];
 	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
 	let fen = &b"AHah"[..];
 	let expected = vec![
-	    FEN::Castle(BLACK, FILE_A), FEN::Castle(BLACK, FILE_H), FEN::Castle(WHITE, FILE_A), FEN::Castle(WHITE, FILE_H)
+	    Node::Castle(BLACK, FILE_A), Node::Castle(BLACK, FILE_H), Node::Castle(WHITE, FILE_A), Node::Castle(WHITE, FILE_H)
 	];
 	assert_eq!(Done(&b""[..], expected), castling_rights(fen));
     }

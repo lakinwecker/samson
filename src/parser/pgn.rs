@@ -21,9 +21,27 @@
 
 use super::super::game::*;
 use nom::*;
+use parser::san;
 
 use std::str;
 use std::str::FromStr;
+
+///-----------------------------------------------------------------------------
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+pub enum Node {
+    MoveNumber(u16),  
+    Move(san::Node),
+    Comment(String),
+    StartVariation(String),
+    EndVariation(String)
+}
+
+///-----------------------------------------------------------------------------
+#[derive(Clone, Debug)]
+pub struct Game {
+    tags: Vec<Tag>,
+    moves: Vec<Node>
+}
 
 named!(pub string_token, delimited!(char!('"'), escaped!(is_not!("\\\""), '\\', one_of!("\"\\")), char!('"')));
 named!(pub string_token_as_string<String>, map_res!(map_res!(string_token, str::from_utf8), String::from_str));
