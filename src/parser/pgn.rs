@@ -20,6 +20,7 @@
 //------------------------------------------------------------------------------
 
 use super::super::game::*;
+use super::super::types::*;
 use nom::*;
 use parser::san;
 
@@ -29,8 +30,11 @@ use std::str::FromStr;
 ///-----------------------------------------------------------------------------
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum Node {
+    HalfMoveWithNumber(u16, san::Node),
     MoveNumber(u16),  
-    Move(san::Node),
+    UnknownColorMove(san::Node),
+    Move(Color, san::Node),
+    MovePair(san::Node),
     Comment(String),
     StartVariation(String),
     EndVariation(String)
@@ -39,8 +43,8 @@ pub enum Node {
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Debug)]
 pub struct Game {
-    tags: Vec<Tag>,
-    moves: Vec<Node>
+    metadata: Vec<Tag>,
+    game: Vec<Node>
 }
 
 named!(pub string_token, delimited!(char!('"'), escaped!(is_not!("\\\""), '\\', one_of!("\"\\")), char!('"')));
@@ -63,6 +67,20 @@ named!(pub tag_pair<&[u8], Tag>, do_parse!(
     (Tag{key: TagKey(tag_key), value: TagValue(tag_value)})
 ));
 named!(pub tag_list<&[u8], Vec<Tag> >, many0!(ws!(complete!(tag_pair))));
+named!(pub commentary_token, delimited!(char!('{'), is_not!("}"), char!('}')));
+/*named!(pub one_ply<Node>,
+    map!(
+        do_parse!(
+            move_num: opt!(complete!(ws!(integer_token))),
+            periods: opt!(complete!(ws!(many1(period)))),
+            san: opt!(complete!(ws!(san::san_move))),
+            commentary: opt!(complete!(ws!(san::san_move))),
+            (move_num, periods, san)
+        )
+        |(move_num, period, san, commentary)| {
+        }
+    )
+);*/
 
 #[cfg(test)]
 mod tests {
@@ -140,5 +158,10 @@ mod tests {
             ),
             tag_list(b"[Event \"Tony Rotella\"]\n[Date \"2017.01.01\"]")
         );
+    }
+    #[test]
+    fn test_commentary() {
+        assert_eq!(Done(&b""[..], &b"this is a comment"[..]), commentary_token(b"{this is a comment}"));
+        assert_eq!(Done(&b""[..], &b"this is a\n comment"[..]), commentary_token(b"{this is a\n comment}"));
     }
 }
