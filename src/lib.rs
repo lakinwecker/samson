@@ -23,7 +23,6 @@
 #![feature(associated_consts)]
 #![feature(cfg_target_feature)]
 #![feature(asm)]
-#![feature(field_init_shorthand)]
 
 
 #[macro_use]
