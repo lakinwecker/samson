@@ -19,13 +19,29 @@
 // Parsers for the PGN import specification.
 //------------------------------------------------------------------------------
 
-use super::super::game::*;
 use super::super::types::*;
 use nom::*;
 use parser::san;
 
 use std::str;
 use std::str::FromStr;
+
+///-----------------------------------------------------------------------------
+#[derive(Clone, Debug, PartialEq)]
+pub struct TagKey<'a>(pub &'a [u8]);
+
+///-----------------------------------------------------------------------------
+#[derive(Clone, Debug, PartialEq)]
+pub struct TagValue<'a>(pub &'a [u8]);
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Tag<'a> {
+    pub key: TagKey<'a>,
+    pub value: TagValue<'a>
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+pub struct NumericAnnotationGlyph(pub u64);
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
@@ -53,20 +69,20 @@ pub enum Node {
     MoveNumber(u64, Periods),
     Move(san::Node),
     StartVariation,
-    EndVariation
+    EndVariation,
+    Variation(Vec<Node>)
 
 }
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Debug, PartialEq)]
-pub struct Game {
-    pub tags: Vec<Tag>,
+pub struct Game<'a> {
+    pub tags: Vec<Tag<'a>>,
     pub nodes: Vec<Node>,
     pub result: Result
 }
 
 named!(pub string_token, delimited!(char!('"'), escaped!(is_not!("\\\""), '\\', one_of!("\"\\")), char!('"')));
-named!(pub string_token_as_string<String>, map_res!(map_res!(string_token, str::from_utf8), String::from_str));
 named!(pub integer_token<u64>, map_res!(map_res!(ws!(digit), str::from_utf8), FromStr::from_str));
 named!(pub period_token, tag!("."));
 named!(pub open_bracket_token, tag!("["));
@@ -77,11 +93,10 @@ named!(pub nag_token<NumericAnnotationGlyph>,
     map!(preceded!(char!('$'), integer_token), |i| { NumericAnnotationGlyph(i) })
 );
 named!(pub symbol_token, re_bytes_find!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
-named!(pub symbol_token_as_string<String>, map_res!(map_res!(symbol_token, str::from_utf8), String::from_str));
 named!(pub tag_pair<&[u8], Tag>, do_parse!(
     ws!(open_bracket_token) >>
-    tag_key: ws!(symbol_token_as_string) >>
-    tag_value: ws!(string_token_as_string) >>
+    tag_key: ws!(symbol_token) >>
+    tag_value: ws!(string_token) >>
     ws!(close_bracket_token) >>
     (Tag{key: TagKey(tag_key), value: TagValue(tag_value)})
 ));
@@ -157,11 +172,6 @@ mod tests {
         assert_eq!(Done(&b""[..], &b"aaaaaaa \\\" aaaaaaa"[..]), string_token(b"\"aaaaaaa \\\" aaaaaaa\""));
     }
     #[test]
-    fn test_parse_string_as_string() {
-        assert_eq!(Done(&b""[..], String::from_str("aaaaaaa").unwrap()), string_token_as_string(b"\"aaaaaaa\""));
-        assert_eq!(Done(&b""[..], String::from_str("aaaaaaa \\\" aaaaaaa").unwrap()), string_token_as_string(b"\"aaaaaaa \\\" aaaaaaa\""));
-    }
-    #[test]
     fn test_integer_token() {
         assert_eq!(Done(&b""[..], 111u64), integer_token(b"111"));
         assert_eq!(Done(&b""[..], 311u64), integer_token(b"311"));
@@ -196,23 +206,18 @@ mod tests {
         assert_eq!(Done(&b"!()~{}[]"[..], &b"sasd#_+#=:-"[..]), symbol_token(b"sasd#_+#=:-!()~{}[]"));
     }
     #[test]
-    fn test_symbol_token_as_string() {
-        assert_eq!(Done(&b""[..], String::from("sasd#_+#=:-")), symbol_token_as_string(b"sasd#_+#=:-"));
-        assert_eq!(Done(&b"!()~{}[]"[..], String::from("sasd#_+#=:-")), symbol_token_as_string(b"sasd#_+#=:-!()~{}[]"));
-    }
-    #[test]
     fn test_tag_pair() {
-        assert_eq!(Done(&b""[..], Tag{key: TagKey(String::from("Event")), value: TagValue(String::from("?"))}), tag_pair(b"[Event \"?\"]"));
-        assert_eq!(Done(&b""[..], Tag{key: TagKey(String::from("Event")), value: TagValue(String::from("Tony Rotella"))}), tag_pair(b"[Event \"Tony Rotella\"]"));
+        assert_eq!(Done(&b""[..], Tag{key: TagKey(&b"Event"[..]), value: TagValue(&b"?"[..])}), tag_pair(b"[Event \"?\"]"));
+        assert_eq!(Done(&b""[..], Tag{key: TagKey(&b"Event"[..]), value: TagValue(&b"Tony Rotella"[..])}), tag_pair(b"[Event \"Tony Rotella\"]"));
     }
     #[test]
     fn test_tag_list() {
         assert_eq!(
             Done(&b""[..], 
-                vec!{
-                    Tag{key: TagKey(String::from("Event")), value: TagValue(String::from("Tony Rotella"))},
-                    Tag{key: TagKey(String::from("Date")), value: TagValue(String::from("2017.01.01"))},
-                }
+                vec![
+                    Tag{key: TagKey(&b"Event"[..]), value: TagValue(&b"Tony Rotella"[..])},
+                    Tag{key: TagKey(&b"Date"[..]), value: TagValue(&b"2017.01.01"[..])}
+                ]
             ),
             tag_list(b"[Event \"Tony Rotella\"]\n[Date \"2017.01.01\"]")
         );
@@ -331,43 +336,43 @@ analyst and openings theoretician, from Ohio, USA.} *
 
                 assert_eq!(
                     game.tags[0],
-                    Tag{key: TagKey(String::from_str("Event").unwrap()), value: TagValue(String::from_str("?").unwrap())}
+                    Tag{key: TagKey(&b"Event"[..]), value: TagValue(&b"?"[..])}
                 );
                 assert_eq!(
                     game.tags[1],
-                    Tag{key: TagKey(String::from_str("Site").unwrap()), value: TagValue(String::from_str("?").unwrap())}
+                    Tag{key: TagKey(&b"Site"[..]), value: TagValue(&b"?"[..])}
                 );
                 assert_eq!(
                     game.tags[2],
-                    Tag{key: TagKey(String::from_str("Date").unwrap()), value: TagValue(String::from_str("????.??.??").unwrap())}
+                    Tag{key: TagKey(&b"Date"[..]), value: TagValue(&b"????.??.??"[..])}
                 );
                 assert_eq!(
                     game.tags[3],
-                    Tag{key: TagKey(String::from_str("Round").unwrap()), value: TagValue(String::from_str("?").unwrap())}
+                    Tag{key: TagKey(&b"Round"[..]), value: TagValue(&b"?"[..])}
                 );
                 assert_eq!(
                     game.tags[4],
-                    Tag{key: TagKey(String::from_str("White").unwrap()), value: TagValue(String::from_str("About this Publication").unwrap())}
+                    Tag{key: TagKey(&b"White"[..]), value: TagValue(&b"About this Publication"[..])}
                 );
                 assert_eq!(
                     game.tags[5],
-                    Tag{key: TagKey(String::from_str("Black").unwrap()), value: TagValue(String::from_str("?").unwrap())}
+                    Tag{key: TagKey(&b"Black"[..]), value: TagValue(&b"?"[..])}
                 );
                 assert_eq!(
                     game.tags[6],
-                    Tag{key: TagKey(String::from_str("Result").unwrap()), value: TagValue(String::from_str("*").unwrap())}
+                    Tag{key: TagKey(&b"Result"[..]), value: TagValue(&b"*"[..])}
                 );
                 assert_eq!(
                     game.tags[7],
-                    Tag{key: TagKey(String::from_str("Annotator").unwrap()), value: TagValue(String::from_str("Tony Rotella").unwrap())}
+                    Tag{key: TagKey(&b"Annotator"[..]), value: TagValue(&b"Tony Rotella"[..])}
                 );
                 assert_eq!(
                     game.tags[8],
-                    Tag{key: TagKey(String::from_str("PlyCount").unwrap()), value: TagValue(String::from_str("2").unwrap())}
+                    Tag{key: TagKey(&b"PlyCount"[..]), value: TagValue(&b"2"[..])}
                 );
                 assert_eq!(
                     game.tags[9],
-                    Tag{key: TagKey(String::from_str("SourceDate").unwrap()), value: TagValue(String::from_str("2015.03.02").unwrap())}
+                    Tag{key: TagKey(&b"SourceDate"[..]), value: TagValue(&b"2015.03.02"[..])}
                 );
                 assert_eq!(
                     game.nodes[0],
