@@ -29,7 +29,5 @@ pub struct Tag {
 pub struct Game {
     pub tags: Vec<Tag>
 }
-#[derive(Clone, Debug, PartialEq)]
-pub struct NumericAnnotationGlyph {
-    pub num: u64
-}
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+pub struct NumericAnnotationGlyph(pub u64);

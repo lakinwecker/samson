@@ -29,33 +29,52 @@ use std::str::FromStr;
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+pub enum Periods {
+    None,
+    One,
+    Three,
+    Other
+}
+
+///-----------------------------------------------------------------------------
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+pub enum GameTermination {
+    WhiteWin,
+    BlackWin,
+    Draw,
+    Other
+}
+
+///-----------------------------------------------------------------------------
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum Node {
-    HalfMoveWithNumber(u16, san::Node),
-    MoveNumber(u16),  
-    UnknownColorMove(san::Node),
-    Move(Color, san::Node),
-    MovePair(san::Node),
     Comment(String),
-    StartVariation(String),
-    EndVariation(String)
+    Nag(NumericAnnotationGlyph),
+    MoveNumber(u64, Periods),
+    Move(san::Node),
+    StartVariation,
+    EndVariation
+
 }
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Debug)]
 pub struct Game {
     metadata: Vec<Tag>,
-    game: Vec<Node>
+    nodes: Vec<Node>,
+    termination: GameTermination
 }
 
 named!(pub string_token, delimited!(char!('"'), escaped!(is_not!("\\\""), '\\', one_of!("\"\\")), char!('"')));
 named!(pub string_token_as_string<String>, map_res!(map_res!(string_token, str::from_utf8), String::from_str));
 named!(pub integer_token<u64>, map_res!(map_res!(ws!(digit), str::from_utf8), FromStr::from_str));
 named!(pub period_token, tag!("."));
-named!(pub asterisk_token, tag!("*"));
 named!(pub open_bracket_token, tag!("["));
 named!(pub close_bracket_token, tag!("]"));
+named!(pub open_parenthesis_token, tag!("("));
+named!(pub close_parenthesis_token, tag!(")"));
 named!(pub nag_token<NumericAnnotationGlyph>,
-    map!(preceded!(char!('$'), integer_token), |i| { NumericAnnotationGlyph{num: i} })
+    map!(preceded!(char!('$'), integer_token), |i| { NumericAnnotationGlyph(i) })
 );
 named!(pub symbol_token, re_bytes_find!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
 named!(pub symbol_token_as_string<String>, map_res!(map_res!(symbol_token, str::from_utf8), String::from_str));
@@ -68,19 +87,64 @@ named!(pub tag_pair<&[u8], Tag>, do_parse!(
 ));
 named!(pub tag_list<&[u8], Vec<Tag> >, many0!(ws!(complete!(tag_pair))));
 named!(pub commentary_token, delimited!(char!('{'), is_not!("}"), char!('}')));
-/*named!(pub one_ply<Node>,
+
+named!(pub parse_termination<GameTermination>,
+    alt_complete!(
+        map!(ws!(tag!("1-0")), |_| { GameTermination::WhiteWin }) |
+        map!(ws!(tag!("0-1")), |_| { GameTermination::BlackWin }) |
+        map!(ws!(tag!("1/2-1/2")), |_| { GameTermination::Draw }) |
+        map!(ws!(tag!("*")), |_| { GameTermination::Other })
+    )
+);
+
+named!(pub parse_node<Node>,
+    alt_complete!(
+        map!(ws!(open_parenthesis_token), |_| { Node::StartVariation }) |
+        map!(ws!(close_parenthesis_token), |_| { Node::EndVariation }) |
+        map!(ws!(nag_token), |x| { Node::Nag(x) }) |
+        map!(ws!(commentary_token), |comment| {
+            Node::Comment(String::from_str(str::from_utf8(comment).unwrap_or("")).unwrap_or(String::new()))
+        }) |
+        map!(
+            do_parse!(
+                num: ws!(complete!(integer_token)) >>
+                periods: opt!(ws!(complete!(many0!(period_token)))) >>
+                (num, periods)
+            ),
+            |(num, periods): (u64, Option<Vec<&[u8]> >)| {
+                Node::MoveNumber(
+                    num,
+                    match periods {
+                        Some(x) => {
+                            match x.len() {
+                                1 => Periods::One,
+                                3 => Periods::Three,
+                                0 => Periods:: None,
+                                _ => Periods::Other
+                            }
+                        },
+                        _ => Periods::None,
+                    }
+                )
+            }
+        ) |
+        map!(ws!(complete!(san::san_move)), |x| { Node::Move(x) })
+    )
+);
+named!(pub node_list<Vec<Node> >, many1!(parse_node));
+
+/*
+named!(pub parse_game<Game>,
     map!(
         do_parse!(
-            move_num: opt!(complete!(ws!(integer_token))),
-            periods: opt!(complete!(ws!(many1(period)))),
-            san: opt!(complete!(ws!(san::san_move))),
-            commentary: opt!(complete!(ws!(san::san_move))),
-            (move_num, periods, san)
-        )
-        |(move_num, period, san, commentary)| {
+            tags: tag_list,
+            nodes: nodes_list,
+        ),
+        || {
         }
     )
-);*/
+);
+*/
 
 #[cfg(test)]
 mod tests {
@@ -111,11 +175,6 @@ mod tests {
         assert_eq!(Done(&b""[..], &b"."[..]), period_token(b"."));
         assert_eq!(Done(&b"ef"[..], &b"."[..]), period_token(b".ef"));
     }
-    #[test]
-    fn test_asterisk_token() {
-        assert_eq!(Done(&b""[..], &b"*"[..]), asterisk_token(b"*"));
-        assert_eq!(Done(&b"ef"[..], &b"*"[..]), asterisk_token(b"*ef"));
-    }
 
     #[test]
     fn test_open_bracket_token() {
@@ -129,8 +188,8 @@ mod tests {
     }
     #[test]
     fn test_nag_token() {
-        assert_eq!(Done(&b""[..], NumericAnnotationGlyph{num: 4u64}), nag_token(b"$4"));
-        assert_eq!(Done(&b"ef"[..], NumericAnnotationGlyph{num: 4u64}), nag_token(b"$4ef"));
+        assert_eq!(Done(&b""[..], NumericAnnotationGlyph(4u64)), nag_token(b"$4"));
+        assert_eq!(Done(&b"ef"[..], NumericAnnotationGlyph(4u64)), nag_token(b"$4ef"));
     }
     #[test]
     fn test_symbol_token() {
@@ -163,5 +222,63 @@ mod tests {
     fn test_commentary() {
         assert_eq!(Done(&b""[..], &b"this is a comment"[..]), commentary_token(b"{this is a comment}"));
         assert_eq!(Done(&b""[..], &b"this is a\n comment"[..]), commentary_token(b"{this is a\n comment}"));
+    }
+    #[test]
+    fn test_game_termination() {
+        assert_eq!(Done(&b""[..], GameTermination::WhiteWin), parse_termination(b"1-0"));
+        assert_eq!(Done(&b""[..], GameTermination::BlackWin), parse_termination(b"0-1"));
+        assert_eq!(Done(&b""[..], GameTermination::Draw), parse_termination(b"1/2-1/2"));
+        assert_eq!(Done(&b""[..], GameTermination::Other), parse_termination(b"*"));
+    }
+    #[test]
+    fn test_parse_node() {
+        assert_eq!(Done(&b""[..], Node::StartVariation), parse_node(b"("));
+        assert_eq!(Done(&b""[..], Node::EndVariation), parse_node(b")"));
+        assert_eq!(Done(&b""[..], Node::Nag(NumericAnnotationGlyph(1))), parse_node(b"$1"));
+        assert_eq!(Done(&b""[..], Node::MoveNumber(1, Periods::None)), parse_node(b"1"));
+        assert_eq!(Done(&b""[..], Node::MoveNumber(2, Periods::One)), parse_node(b"2."));
+        assert_eq!(Done(&b""[..], Node::MoveNumber(3, Periods::Other)), parse_node(b"3...."));
+        assert_eq!(Done(&b""[..], Node::MoveNumber(4, Periods::Three)), parse_node(b"4..."));
+        assert_eq!(
+            Done(&b""[..], Node::Comment(String::from_str("this is a comment").unwrap())),
+            parse_node(b"{this is a comment}")
+        );
+        assert_eq!(
+            Done(&b""[..], Node::Move(san::Node::Move(
+                        KNIGHT,
+                        san::Source::None,
+                        san::MoveOrCapture::Capture, SQ_F3,
+                        san::Promotion::None,
+                        san::Check::None,
+                        san::MoveAnnotation::None
+                    )
+                )
+            ),
+            parse_node(&b"Nxf3"[..])
+        );
+    }
+    #[test]
+    fn test_node_list() {
+        let nxf3 = san::Node::Move(
+            KNIGHT,
+            san::Source::None,
+            san::MoveOrCapture::Capture, SQ_F3,
+            san::Promotion::None,
+            san::Check::None,
+            san::MoveAnnotation::None
+        );
+        assert_eq!(
+            Done(&b""[..], 
+                vec![
+                    Node::StartVariation,
+                    Node::Comment(String::from_str("comment").unwrap()),
+                    Node::MoveNumber(1, Periods::Three),
+                    Node::Move(nxf3),
+                    Node::Nag(NumericAnnotationGlyph(3)),
+                    Node::EndVariation,
+                ]
+            ),
+            node_list(&b"( {comment} 1...Nxf3 $3 )"[..])
+        );
     }
 }
