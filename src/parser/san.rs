@@ -207,8 +207,6 @@ named!(pub san_move<Node>,
                 _ => Promotion::None
             };
 
-            println!("{:?} {:?} {:?} {:?} {:?} {:?} {:?}", piece, file, rank, capture, square, promotion, promotion_piece);
-
             match (file, rank, square) {
                 (Some(f), Some(r), None) => {
                     Node::Move(piece, Source::None, capture, make_square(f, r), promotion, check, annotation)
