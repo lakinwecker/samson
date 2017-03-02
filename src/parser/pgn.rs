@@ -90,7 +90,7 @@ named!(pub open_bracket_token, tag!("["));
 named!(pub close_bracket_token, tag!("]"));
 named!(pub open_parenthesis_token, tag!("("));
 named!(pub close_parenthesis_token, tag!(")"));
-named!(pub single_line_comment, preceded!(tag!("%"), is_not!("\n")));
+named!(pub escape_comment, preceded!(tag!("%"), is_not!("\n")));
 named!(pub nag_token<NumericAnnotationGlyph>,
     map!(preceded!(char!('$'), integer_token), |i| { NumericAnnotationGlyph(i) })
 );
@@ -148,10 +148,19 @@ named!(pub game_node<Node>,
 );
 named!(pub game_node_list<Vec<Node> >, many1!(game_node));
 
+// TODO: find a more elegant way to deal with the silly escape comments.
+//       Q: Why does pgn have such ambiguous rules. So can an escape comment
+//       appear in the middle of a tag list or set of moves/commentary?
+//       What about in a commentary itself? 
+//       A: Tide goes in, Tide goes out. You can't explain that.
+//
+//       Also, we are ignoring the escape comments for now. 
 named!(pub game<Game>,
     map!(
         do_parse!(
+            many0!(escape_comment) >>
             tags: tag_list >>
+            many0!(escape_comment) >>
             nodes: game_node_list >>
             result: game_result >>
             (tags, nodes, result)
@@ -305,7 +314,8 @@ mod tests {
             san::Check::None,
             san::MoveAnnotation::None
         );
-        let result = game(&b"[Event \"?\"]
+        let result = game(&b"% BOOKTITLE = The Killer Sicilian: Fighting 1 e4 with the Kalashnikov
+[Event \"?\"]
 [Site \"?\"]
 [Date \"????.??.??\"]
 [Round \"?\"]
@@ -315,6 +325,8 @@ mod tests {
 [Annotator \"Tony Rotella\"]
 [PlyCount \"2\"]
 [SourceDate \"2015.03.02\"]
+
+% This should be ignored for now
 
 {Are you searching for a new weapon against 1 e4? Look no further - choose the
 Killer Sicilian! --- In this book, opening expert Tony Rotella presents a
