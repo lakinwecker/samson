@@ -63,14 +63,15 @@ pub enum Result {
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-pub enum Node {
-    Comment(String),
+pub enum Node<'a> {
+    EscapeComment(&'a [u8]),
+    Comment(&'a [u8]),
     Nag(NumericAnnotationGlyph),
     MoveNumber(u64, Periods),
     Move(san::Node),
     StartVariation,
     EndVariation,
-    Variation(Vec<Node>)
+    Variation(Vec<Node<'a>>)
 
 }
 
@@ -78,7 +79,7 @@ pub enum Node {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Game<'a> {
     pub tags: Vec<Tag<'a>>,
-    pub nodes: Vec<Node>,
+    pub nodes: Vec<Node<'a>>,
     pub result: Result
 }
 
@@ -89,6 +90,7 @@ named!(pub open_bracket_token, tag!("["));
 named!(pub close_bracket_token, tag!("]"));
 named!(pub open_parenthesis_token, tag!("("));
 named!(pub close_parenthesis_token, tag!(")"));
+named!(pub single_line_comment, preceded!(tag!("%"), is_not!("\n")));
 named!(pub nag_token<NumericAnnotationGlyph>,
     map!(preceded!(char!('$'), integer_token), |i| { NumericAnnotationGlyph(i) })
 );
@@ -116,10 +118,8 @@ named!(pub game_node<Node>,
     alt_complete!(
         map!(ws!(open_parenthesis_token), |_| { Node::StartVariation }) |
         map!(ws!(close_parenthesis_token), |_| { Node::EndVariation }) |
-        map!(ws!(nag_token), |x| { Node::Nag(x) }) |
-        map!(ws!(commentary_token), |comment| {
-            Node::Comment(String::from_str(str::from_utf8(comment).unwrap_or("")).unwrap_or(String::new()))
-        }) |
+        map!(ws!(nag_token), |n| { Node::Nag(n) }) |
+        map!(ws!(commentary_token), |c| { Node::Comment(c) }) |
         map!(
             do_parse!(
                 num: ws!(complete!(integer_token)) >>
@@ -244,7 +244,7 @@ mod tests {
         assert_eq!(Done(&b""[..], Node::MoveNumber(3, Periods::Other)), game_node(b"3...."));
         assert_eq!(Done(&b""[..], Node::MoveNumber(4, Periods::Three)), game_node(b"4..."));
         assert_eq!(
-            Done(&b""[..], Node::Comment(String::from_str("this is a comment").unwrap())),
+            Done(&b""[..], Node::Comment(&b"this is a comment"[..])),
             game_node(b"{this is a comment}")
         );
         assert_eq!(
@@ -275,7 +275,7 @@ mod tests {
             Done(&b""[..], 
                 vec![
                     Node::StartVariation,
-                    Node::Comment(String::from_str("comment").unwrap()),
+                    Node::Comment(&b"comment"[..]),
                     Node::MoveNumber(1, Periods::Three),
                     Node::Move(nxf3),
                     Node::Nag(NumericAnnotationGlyph(3)),
@@ -376,7 +376,7 @@ analyst and openings theoretician, from Ohio, USA.} *
                 );
                 assert_eq!(
                     game.nodes[0],
-                    Node::Comment(String::from_str("\
+                    Node::Comment(&b"\
 Are you searching for a new weapon against 1 e4? Look no further - choose the
 Killer Sicilian! --- In this book, opening expert Tony Rotella presents a
 Sicilian repertoire for Black, the backbone of which consists of the
@@ -389,7 +389,7 @@ Radjabov and multi-time US Champion Alexander Shabalov. --- Rotella critically
 examines the main lines and lucidly explains the key positional and tactical
 ideas for both sides. He also shows what Black should do against White's
 various Anti-Sicilian options. Read this book and unleash the Killer Sicilian!
-").unwrap())
+"[..])
                 );
                 assert_eq!(
                     game.nodes[1],
@@ -405,9 +405,9 @@ various Anti-Sicilian options. Read this book and unleash the Killer Sicilian!
                 );
                 assert_eq!(
                     game.nodes[4],
-                    Node::Comment(String::from_str("\
+                    Node::Comment(&b"\
 . Tony Rotella is an experienced correspondence player, teacher,
-analyst and openings theoretician, from Ohio, USA.").unwrap())
+analyst and openings theoretician, from Ohio, USA."[..])
                 );
                 assert_eq!(game.result, Result::Other);
 
