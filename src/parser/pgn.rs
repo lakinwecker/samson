@@ -27,19 +27,29 @@ use std::str;
 use std::str::FromStr;
 
 ///-----------------------------------------------------------------------------
-#[derive(Clone, Debug, PartialEq)]
-pub struct TagKey<'a>(pub &'a [u8]);
+/// There are 7 tags that must be present with each game:
+/// 1. Event
+/// 2. Site
+/// 3. Date
+/// 4. Round
+/// 5. White
+/// 6. Black
+/// 7. Result
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Debug, PartialEq)]
-pub struct TagValue<'a>(pub &'a [u8]);
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Tag<'a> {
-    pub key: TagKey<'a>,
-    pub value: TagValue<'a>
+pub enum Tag<'a> {
+    Event(&'a [u8]),
+    Site(&'a [u8]),
+    Date(&'a [u8]),
+    Round(&'a [u8]),
+    White(&'a [u8]),
+    Black(&'a [u8]),
+    Result(&'a [u8]),
+    Other(&'a [u8], &'a [u8])
 }
 
+///-----------------------------------------------------------------------------
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct NumericAnnotationGlyph(pub u64);
 
@@ -95,14 +105,108 @@ named!(pub nag_token<NumericAnnotationGlyph>,
     map!(preceded!(char!('$'), integer_token), |i| { NumericAnnotationGlyph(i) })
 );
 named!(pub symbol_token, re_bytes_find!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
-named!(pub tag_pair<&[u8], Tag>, do_parse!(
-    ws!(open_bracket_token) >>
-    tag_key: ws!(symbol_token) >>
-    tag_value: ws!(string_token) >>
-    ws!(close_bracket_token) >>
-    (Tag{key: TagKey(tag_key), value: TagValue(tag_value)})
-));
-named!(pub tag_list<&[u8], Vec<Tag> >, many0!(ws!(complete!(tag_pair))));
+// TODO: this is verbose and gross, but I can't figure out a better way to do it
+// without the help of the internet.
+named!(pub event_tag<Tag>, 
+    map!(
+        do_parse!(
+            ws!(open_bracket_token) >>
+            ws!(tag!("Event")) >>
+            value: ws!(string_token) >>
+            ws!(close_bracket_token) >>
+            (value)
+        ),
+        |value|{ Tag::Event(value) }
+    )
+);
+named!(pub site_tag<Tag>, 
+    map!(
+        do_parse!(
+            ws!(open_bracket_token) >>
+            ws!(tag!("Site")) >>
+            value: ws!(string_token) >>
+            ws!(close_bracket_token) >>
+            (value)
+        ),
+        |value|{ Tag::Site(value) }
+    )
+);
+named!(pub date_tag<Tag>, 
+    map!(
+        do_parse!(
+            ws!(open_bracket_token) >>
+            ws!(tag!("Date")) >>
+            value: ws!(string_token) >>
+            ws!(close_bracket_token) >>
+            (value)
+        ),
+        |value|{ Tag::Date(value) }
+    )
+);
+named!(pub round_tag<Tag>, 
+    map!(
+        do_parse!(
+            ws!(open_bracket_token) >>
+            ws!(tag!("Round")) >>
+            value: ws!(string_token) >>
+            ws!(close_bracket_token) >>
+            (value)
+        ),
+        |value|{ Tag::Round(value) }
+    )
+);
+named!(pub white_tag<Tag>, 
+    map!(
+        do_parse!(
+            ws!(open_bracket_token) >>
+            ws!(tag!("White")) >>
+            value: ws!(string_token) >>
+            ws!(close_bracket_token) >>
+            (value)
+        ),
+        |value|{ Tag::White(value) }
+    )
+);
+named!(pub black_tag<Tag>, 
+    map!(
+        do_parse!(
+            ws!(open_bracket_token) >>
+            ws!(tag!("Black")) >>
+            value: ws!(string_token) >>
+            ws!(close_bracket_token) >>
+            (value)
+        ),
+        |value|{ Tag::Black(value) }
+    )
+);
+named!(pub result_tag<Tag>, 
+    map!(
+        do_parse!(
+            ws!(open_bracket_token) >>
+            ws!(tag!("Result")) >>
+            value: ws!(string_token) >>
+            ws!(close_bracket_token) >>
+            (value)
+        ),
+        |value|{ Tag::Result(value) }
+    )
+);
+named!(pub other_tag<Tag>, 
+    map!(
+        do_parse!(
+            ws!(open_bracket_token) >>
+            key: ws!(symbol_token) >>
+            value: ws!(string_token) >>
+            ws!(close_bracket_token) >>
+            (key, value)
+        ),
+        |(key, value)| { Tag::Other(key, value) }
+    )
+);
+named!(pub tag_pair<Tag>, 
+    alt_complete!(event_tag | site_tag | date_tag | round_tag | white_tag | black_tag | result_tag | other_tag)
+);
+named!(pub tag_list<Vec<Tag> >, many0!(ws!(tag_pair)));
 named!(pub commentary_token, delimited!(char!('{'), is_not!("}"), char!('}')));
 
 named!(pub game_result<Result>,
@@ -216,18 +320,13 @@ mod tests {
     }
     #[test]
     fn test_tag_pair() {
-        assert_eq!(Done(&b""[..], Tag{key: TagKey(&b"Event"[..]), value: TagValue(&b"?"[..])}), tag_pair(b"[Event \"?\"]"));
-        assert_eq!(Done(&b""[..], Tag{key: TagKey(&b"Event"[..]), value: TagValue(&b"Tony Rotella"[..])}), tag_pair(b"[Event \"Tony Rotella\"]"));
+        assert_eq!(Done(&b""[..], Tag::Event(&b"?"[..])), tag_pair(b"[Event \"?\"]"));
+        assert_eq!(Done(&b""[..], Tag::Event(&b"Tony Rotella"[..])), tag_pair(b"[Event \"Tony Rotella\"]"));
     }
     #[test]
     fn test_tag_list() {
         assert_eq!(
-            Done(&b""[..], 
-                vec![
-                    Tag{key: TagKey(&b"Event"[..]), value: TagValue(&b"Tony Rotella"[..])},
-                    Tag{key: TagKey(&b"Date"[..]), value: TagValue(&b"2017.01.01"[..])}
-                ]
-            ),
+            Done(&b""[..], vec![Tag::Event(&b"Tony Rotella"[..]), Tag::Date(&b"2017.01.01"[..])]),
             tag_list(b"[Event \"Tony Rotella\"]\n[Date \"2017.01.01\"]")
         );
     }
@@ -346,46 +445,16 @@ analyst and openings theoretician, from Ohio, USA.} *
         match result {
             Done(_, game) => {
 
-                assert_eq!(
-                    game.tags[0],
-                    Tag{key: TagKey(&b"Event"[..]), value: TagValue(&b"?"[..])}
-                );
-                assert_eq!(
-                    game.tags[1],
-                    Tag{key: TagKey(&b"Site"[..]), value: TagValue(&b"?"[..])}
-                );
-                assert_eq!(
-                    game.tags[2],
-                    Tag{key: TagKey(&b"Date"[..]), value: TagValue(&b"????.??.??"[..])}
-                );
-                assert_eq!(
-                    game.tags[3],
-                    Tag{key: TagKey(&b"Round"[..]), value: TagValue(&b"?"[..])}
-                );
-                assert_eq!(
-                    game.tags[4],
-                    Tag{key: TagKey(&b"White"[..]), value: TagValue(&b"About this Publication"[..])}
-                );
-                assert_eq!(
-                    game.tags[5],
-                    Tag{key: TagKey(&b"Black"[..]), value: TagValue(&b"?"[..])}
-                );
-                assert_eq!(
-                    game.tags[6],
-                    Tag{key: TagKey(&b"Result"[..]), value: TagValue(&b"*"[..])}
-                );
-                assert_eq!(
-                    game.tags[7],
-                    Tag{key: TagKey(&b"Annotator"[..]), value: TagValue(&b"Tony Rotella"[..])}
-                );
-                assert_eq!(
-                    game.tags[8],
-                    Tag{key: TagKey(&b"PlyCount"[..]), value: TagValue(&b"2"[..])}
-                );
-                assert_eq!(
-                    game.tags[9],
-                    Tag{key: TagKey(&b"SourceDate"[..]), value: TagValue(&b"2015.03.02"[..])}
-                );
+                assert_eq!(game.tags[0], Tag::Event(&b"?"[..]));
+                assert_eq!(game.tags[1], Tag::Site(&b"?"[..]));
+                assert_eq!(game.tags[2], Tag::Date(&b"????.??.??"[..]));
+                assert_eq!(game.tags[3], Tag::Round(&b"?"[..]));
+                assert_eq!(game.tags[4], Tag::White(&b"About this Publication"[..]));
+                assert_eq!(game.tags[5], Tag::Black(&b"?"[..]));
+                assert_eq!(game.tags[6], Tag::Result(&b"*"[..]));
+                assert_eq!(game.tags[7], Tag::Other(&b"Annotator"[..], &b"Tony Rotella"[..]));
+                assert_eq!(game.tags[8], Tag::Other(&b"PlyCount"[..], &b"2"[..]));
+                assert_eq!(game.tags[9], Tag::Other(&b"SourceDate"[..], &b"2015.03.02"[..]));
                 assert_eq!(
                     game.nodes[0],
                     Node::Comment(&b"\
