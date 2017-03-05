@@ -210,11 +210,22 @@ named!(pub tag_list<Vec<Tag> >, many0!(ws!(tag_pair)));
 named!(pub commentary_token, delimited!(char!('{'), is_not!("}"), char!('}')));
 
 named!(pub game_result<Result>,
-    alt_complete!(
-        map!(ws!(tag!("1-0")), |_| { Result::WhiteWin }) |
-        map!(ws!(tag!("0-1")), |_| { Result::BlackWin }) |
-        map!(ws!(tag!("1/2-1/2")), |_| { Result::Draw }) |
-        map!(ws!(tag!("*")), |_| { Result::Other })
+    map!(
+        alt_complete!(
+            ws!(tag!("*")) |
+            ws!(tag!("0-1")) |
+            ws!(tag!("1/2-1/2")) |
+            ws!(tag!("1-0"))
+        ),
+        |value: &[u8]| {
+            println!("{:?}", value);
+            match value {
+                b"1-0" => Result::WhiteWin,
+                b"0-1" => Result::BlackWin,
+                b"1/2-1/2" => Result::Draw,
+                _ => Result::Other
+            }
+        }
     )
 );
 
@@ -263,15 +274,16 @@ named!(pub game<Game>,
     map!(
         do_parse!(
             many0!(escape_comment) >>
-            tags: tag_list >>
+            tags: ws!(tag_list) >>
             many0!(escape_comment) >>
-            nodes: game_node_list >>
-            result: game_result >>
+            nodes: ws!(game_node_list) >>
+            result: ws!(game_result) >>
             (tags, nodes, result)
         ),
         |(tags, nodes, result)| { Game{tags: tags, nodes:nodes, result: result} }
     )
 );
+named!(pub pgn<Vec<Game> >, many0!(game));
 
 #[cfg(test)]
 mod tests {
@@ -341,6 +353,11 @@ mod tests {
         assert_eq!(Done(&b""[..], Result::BlackWin), game_result(b"0-1"));
         assert_eq!(Done(&b""[..], Result::Draw), game_result(b"1/2-1/2"));
         assert_eq!(Done(&b""[..], Result::Other), game_result(b"*"));
+
+        assert_eq!(Done(&b""[..], Result::WhiteWin), game_result(b" 1-0 "));
+        assert_eq!(Done(&b""[..], Result::BlackWin), game_result(b" 0-1 "));
+        assert_eq!(Done(&b""[..], Result::Draw), game_result(b" 1/2-1/2 "));
+        assert_eq!(Done(&b""[..], Result::Other), game_result(b" * "));
     }
     #[test]
     fn test_game_node() {
@@ -494,6 +511,60 @@ analyst and openings theoretician, from Ohio, USA."[..])
 
             },
             _ => assert!(false, "Unable to parse PGN from valid PGN"),
+        }
+    }
+
+    #[test]
+    fn test_game_2() {
+        let result = game(&b"[Event \"London\"]
+[Site \"?\"]
+[Date \"1834.??.??\"]
+[Round \"?\"]
+[White \"McDonnell, A.\"]
+[Black \"De La Bourdonnais, L.\"]
+[Result \"0-1\"]
+[ECO \"B32\"]
+[Annotator \"Tony Rotella\"]
+[PlyCount \"74\"]
+[EventDate \"1834.??.??\"]
+[Source \"Everyman Chess\"]
+[SourceDate \"2015.02.28\"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 e5 5. Nxc6 bxc6 6. Bc4 Nf6 7. Bg5 Be7 8.
+Qe2 d5 9. Bxf6 Bxf6 10. Bb3 O-O 11. O-O a5 12. exd5 cxd5 13. Rd1 d4 14. c4 Qb6
+15. Bc2 Bb7 16. Nd2 Rae8 17. Ne4 Bd8 18. c5 Qc6 19. f3 Be7 20. Rac1 f5 21. Qc4+
+Kh8 22. Ba4 Qh6 23. Bxe8 fxe4 24. c6 exf3 25. Rc2 Qe3+ 26. Kh1 Bc8 27. Bd7 f2
+28. Rf1 d3 29. Rc3 Bxd7 30. cxd7 e4 31. Qc8 Bd8 32. Qc4 Qe1 33. Rc1 d2 34. Qc5
+Rg8 35. Rd1 e3 36. Qc3 Qxd1 37. Rxd1 e2 {. One of the most fantastic positions
+in all of chess history, produced (roughly, as White's 5th isn't exactly the
+main focus of the work you just purchased) by the very subject of this book by
+two of the best players in the world over a century and a half ago.} 1-0
+"[..]);
+        match result {
+            Done(_, game) => {
+
+                assert_eq!(game.tags[0], Tag::Event(&b"London"[..]));
+                assert_eq!(game.tags[1], Tag::Site(&b"?"[..]));
+                assert_eq!(game.tags[2], Tag::Date(&b"1834.??.??"[..]));
+                assert_eq!(game.tags[3], Tag::Round(&b"?"[..]));
+                assert_eq!(game.tags[4], Tag::White(&b"McDonnell, A."[..]));
+                assert_eq!(game.tags[5], Tag::Black(&b"De La Bourdonnais, L."[..]));
+                assert_eq!(game.tags[6], Tag::Result(&b"0-1"[..]));
+                assert_eq!(game.tags[7], Tag::Other(&b"ECO"[..], &b"B32"[..]));
+                assert_eq!(game.tags[8], Tag::Other(&b"Annotator"[..], &b"Tony Rotella"[..]));
+                assert_eq!(game.tags[9], Tag::Other(&b"PlyCount"[..], &b"74"[..]));
+                assert_eq!(game.tags[10], Tag::Other(&b"EventDate"[..], &b"1834.??.??"[..]));
+                assert_eq!(game.tags[11], Tag::Other(&b"Source"[..], &b"Everyman Chess"[..]));
+                assert_eq!(game.tags[12], Tag::Other(&b"SourceDate"[..], &b"2015.02.28"[..]));
+            },
+            Error(e) => {
+                println!("Error!: {:?}", e);
+                assert!(false);
+            },
+            Incomplete(_) => {
+                println!("Incomplete!");
+                assert!(false);
+            }
         }
     }
 }
