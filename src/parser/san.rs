@@ -67,6 +67,7 @@ pub enum Node {
     Move(PieceType, Source, MoveOrCapture, Square, Promotion, Check, MoveAnnotation),
     CastleKingSide(Check, MoveAnnotation),
     CastleQueenSide(Check, MoveAnnotation),
+    NullMove(Check, MoveAnnotation),
     InvalidMove
 }
 
@@ -232,6 +233,23 @@ named!(pub san_explicit_move<Node>,
 );
 
 ///-----------------------------------------------------------------------------
+named!(pub san_null_move<Node>,
+   map!(
+        do_parse!(
+            tag!("--") >>
+            check: opt!(complete!(san_check)) >>
+            annotation: opt!(complete!(san_move_annotation)) >>
+            (check, annotation)
+        ),
+        |(check, annotation)| {
+            let check = if let Some(x) = check { x } else { Check::None };
+            let annotation = if let Some(x) = annotation { x } else { MoveAnnotation::None };
+            Node::NullMove(check, annotation)
+        }
+    )
+);
+
+///-----------------------------------------------------------------------------
 named!(pub san_castle_king_side<Node>,
    map!(
         do_parse!(
@@ -270,6 +288,7 @@ named!(pub san_castle_queen_side<Node>,
 named!(pub san_move<Node>, alt_complete!(
     san_castle_queen_side |
     san_castle_king_side |
+    san_null_move |
     san_explicit_move
 ));
 
@@ -389,5 +408,7 @@ mod tests {
 
         assert_eq!(Done(&b""[..], Node::CastleKingSide(Check::Checkmate, MoveAnnotation::Brilliant)), san_move(&b"O-O#!!"[..]));
         assert_eq!(Done(&b""[..], Node::CastleQueenSide(Check::Checkmate, MoveAnnotation::Brilliant)), san_move(&b"O-O-O#!!"[..]));
+
+        assert_eq!(Done(&b""[..], Node::NullMove(Check::Checkmate, MoveAnnotation::Brilliant)), san_move(&b"--#!!"[..]));
     }
 }

@@ -15,9 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-//------------------------------------------------------------------------------
-// Parsers for the PGN import specification.
-//------------------------------------------------------------------------------
+///-------------------------------------------------------------------------------------------------
+/// Parsers for the PGN import specification.
+///-------------------------------------------------------------------------------------------------
 
 use super::super::types::*;
 use nom::*;
@@ -26,7 +26,7 @@ use parser::san;
 use std::str;
 use std::str::FromStr;
 
-///-----------------------------------------------------------------------------
+///-------------------------------------------------------------------------------------------------
 /// There are 7 tags that must be present with each game:
 /// 1. Event
 /// 2. Site
@@ -36,7 +36,7 @@ use std::str::FromStr;
 /// 6. Black
 /// 7. Result
 
-///-----------------------------------------------------------------------------
+///-------------------------------------------------------------------------------------------------
 #[derive(Clone, Debug, PartialEq)]
 pub enum Tag<'a> {
     Event(&'a [u8]),
@@ -49,11 +49,11 @@ pub enum Tag<'a> {
     Other(&'a [u8], &'a [u8])
 }
 
-///-----------------------------------------------------------------------------
+///-------------------------------------------------------------------------------------------------
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct NumericAnnotationGlyph(pub u64);
 
-///-----------------------------------------------------------------------------
+///-------------------------------------------------------------------------------------------------
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum Periods {
     None,
@@ -62,7 +62,7 @@ pub enum Periods {
     Other
 }
 
-///-----------------------------------------------------------------------------
+///-------------------------------------------------------------------------------------------------
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum Result {
     WhiteWin,
@@ -71,7 +71,7 @@ pub enum Result {
     Other
 }
 
-///-----------------------------------------------------------------------------
+///-------------------------------------------------------------------------------------------------
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum Node<'a> {
     EscapeComment(&'a [u8]),
@@ -85,7 +85,7 @@ pub enum Node<'a> {
 
 }
 
-///-----------------------------------------------------------------------------
+///-------------------------------------------------------------------------------------------------
 #[derive(Clone, Debug, PartialEq)]
 pub struct Game<'a> {
     pub tags: Vec<Tag<'a>>,
@@ -93,18 +93,39 @@ pub struct Game<'a> {
     pub result: Result
 }
 
+///-------------------------------------------------------------------------------------------------
 named!(pub string_token, delimited!(char!('"'), escaped!(is_not!("\\\""), '\\', one_of!("\"\\")), char!('"')));
+
+///-------------------------------------------------------------------------------------------------
 named!(pub integer_token<u64>, map_res!(map_res!(ws!(digit), str::from_utf8), FromStr::from_str));
+
+///-------------------------------------------------------------------------------------------------
 named!(pub period_token, tag!("."));
+
+///-------------------------------------------------------------------------------------------------
 named!(pub open_bracket_token, tag!("["));
+
+///-------------------------------------------------------------------------------------------------
 named!(pub close_bracket_token, tag!("]"));
+
+///-------------------------------------------------------------------------------------------------
 named!(pub open_parenthesis_token, tag!("("));
+
+///-------------------------------------------------------------------------------------------------
 named!(pub close_parenthesis_token, tag!(")"));
+
+///-------------------------------------------------------------------------------------------------
 named!(pub escape_comment, preceded!(tag!("%"), is_not!("\n")));
+
+///-------------------------------------------------------------------------------------------------
 named!(pub nag_token<NumericAnnotationGlyph>,
     map!(preceded!(char!('$'), integer_token), |i| { NumericAnnotationGlyph(i) })
 );
+
+///-------------------------------------------------------------------------------------------------
 named!(pub symbol_token, re_bytes_find!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
+
+///-------------------------------------------------------------------------------------------------
 // TODO: this is verbose and gross, but I can't figure out a better way to do it
 // without the help of the internet.
 named!(pub event_tag<Tag>, 
@@ -203,32 +224,29 @@ named!(pub other_tag<Tag>,
         |(key, value)| { Tag::Other(key, value) }
     )
 );
+
+///-------------------------------------------------------------------------------------------------
 named!(pub tag_pair<Tag>, 
     alt_complete!(event_tag | site_tag | date_tag | round_tag | white_tag | black_tag | result_tag | other_tag)
 );
+
+///-------------------------------------------------------------------------------------------------
 named!(pub tag_list<Vec<Tag> >, many0!(ws!(tag_pair)));
+
+///-------------------------------------------------------------------------------------------------
 named!(pub commentary_token, delimited!(char!('{'), is_not!("}"), char!('}')));
 
+///-------------------------------------------------------------------------------------------------
 named!(pub game_result<Result>,
-    map!(
-        alt_complete!(
-            ws!(tag!("*")) |
-            ws!(tag!("0-1")) |
-            ws!(tag!("1/2-1/2")) |
-            ws!(tag!("1-0"))
-        ),
-        |value: &[u8]| {
-            println!("{:?}", value);
-            match value {
-                b"1-0" => Result::WhiteWin,
-                b"0-1" => Result::BlackWin,
-                b"1/2-1/2" => Result::Draw,
-                _ => Result::Other
-            }
-        }
+    alt_complete!(
+        map!(ws!(tag!("1-0")), |_| { Result::WhiteWin }) |
+        map!(ws!(tag!("0-1")), |_| { Result::BlackWin }) |
+        map!(ws!(tag!("1/2-1/2")), |_| { Result::Draw }) |
+        map!(ws!(tag!("*")), |_| { Result::Other })
     )
 );
 
+///-------------------------------------------------------------------------------------------------
 named!(pub game_node<Node>,
     alt_complete!(
         map!(ws!(open_parenthesis_token), |_| { Node::StartVariation }) |
@@ -261,7 +279,12 @@ named!(pub game_node<Node>,
         map!(ws!(complete!(san::san_move)), |x| { Node::Move(x) })
     )
 );
+
+///-------------------------------------------------------------------------------------------------
 named!(pub game_node_list<Vec<Node> >, many1!(game_node));
+
+///-------------------------------------------------------------------------------------------------
+named!(pub game_node_list_with_result<(Vec<Node>, Result)>, many_till!(game_node, game_result));
 
 // TODO: find a more elegant way to deal with the silly escape comments.
 //       Q: Why does pgn have such ambiguous rules. So can an escape comment
@@ -276,11 +299,13 @@ named!(pub game<Game>,
             many0!(escape_comment) >>
             tags: ws!(tag_list) >>
             many0!(escape_comment) >>
-            nodes: ws!(game_node_list) >>
-            result: ws!(game_result) >>
-            (tags, nodes, result)
+            nodes_with_result: ws!(game_node_list_with_result) >>
+            (tags, nodes_with_result)
         ),
-        |(tags, nodes, result)| { Game{tags: tags, nodes:nodes, result: result} }
+        |(tags, nodes_with_result)| {
+            let nodes_with_result: (Vec<Node>, Result) = nodes_with_result;
+            Game{tags: tags, nodes:nodes_with_result.0, result: nodes_with_result.1}
+        }
     )
 );
 named!(pub pgn<Vec<Game> >, many0!(game));
@@ -444,19 +469,8 @@ mod tests {
 
 % This should be ignored for now
 
-{Are you searching for a new weapon against 1 e4? Look no further - choose the
-Killer Sicilian! --- In this book, opening expert Tony Rotella presents a
-Sicilian repertoire for Black, the backbone of which consists of the
-Kalashnikov Variation. The Kalashnikov is an ideal choice for those looking to
-take up the Sicilian. Black follows an easy-to-learn system of development,
-with clear strategic aims. What's more, in many lines Black can choose between
-aggressive and positional options. It's no coincidence that the Kalashnikov
-has attracted such attacking talents as World Championship candidate Teimour
-Radjabov and multi-time US Champion Alexander Shabalov. --- Rotella critically
-examines the main lines and lucidly explains the key positional and tactical
-ideas for both sides. He also shows what Black should do against White's
-various Anti-Sicilian options. Read this book and unleash the Killer Sicilian!
-} 1. e4 c5 {. Tony Rotella is an experienced correspondence player, teacher,
+{Are you searching for a new weapon against 1 e4? Look no further}
+1. e4 c5 {. Tony Rotella is an experienced correspondence player, teacher,
 analyst and openings theoretician, from Ohio, USA.} *
 "[..]);
         match result {
@@ -474,20 +488,7 @@ analyst and openings theoretician, from Ohio, USA.} *
                 assert_eq!(game.tags[9], Tag::Other(&b"SourceDate"[..], &b"2015.03.02"[..]));
                 assert_eq!(
                     game.nodes[0],
-                    Node::Comment(&b"\
-Are you searching for a new weapon against 1 e4? Look no further - choose the
-Killer Sicilian! --- In this book, opening expert Tony Rotella presents a
-Sicilian repertoire for Black, the backbone of which consists of the
-Kalashnikov Variation. The Kalashnikov is an ideal choice for those looking to
-take up the Sicilian. Black follows an easy-to-learn system of development,
-with clear strategic aims. What's more, in many lines Black can choose between
-aggressive and positional options. It's no coincidence that the Kalashnikov
-has attracted such attacking talents as World Championship candidate Teimour
-Radjabov and multi-time US Champion Alexander Shabalov. --- Rotella critically
-examines the main lines and lucidly explains the key positional and tactical
-ideas for both sides. He also shows what Black should do against White's
-various Anti-Sicilian options. Read this book and unleash the Killer Sicilian!
-"[..])
+                    Node::Comment(&b"Are you searching for a new weapon against 1 e4? Look no further"[..])
                 );
                 assert_eq!(
                     game.nodes[1],
@@ -535,10 +536,7 @@ Qe2 d5 9. Bxf6 Bxf6 10. Bb3 O-O 11. O-O a5 12. exd5 cxd5 13. Rd1 d4 14. c4 Qb6
 15. Bc2 Bb7 16. Nd2 Rae8 17. Ne4 Bd8 18. c5 Qc6 19. f3 Be7 20. Rac1 f5 21. Qc4+
 Kh8 22. Ba4 Qh6 23. Bxe8 fxe4 24. c6 exf3 25. Rc2 Qe3+ 26. Kh1 Bc8 27. Bd7 f2
 28. Rf1 d3 29. Rc3 Bxd7 30. cxd7 e4 31. Qc8 Bd8 32. Qc4 Qe1 33. Rc1 d2 34. Qc5
-Rg8 35. Rd1 e3 36. Qc3 Qxd1 37. Rxd1 e2 {. One of the most fantastic positions
-in all of chess history, produced (roughly, as White's 5th isn't exactly the
-main focus of the work you just purchased) by the very subject of this book by
-two of the best players in the world over a century and a half ago.} 1-0
+Rg8 35. Rd1 e3 36. Qc3 Qxd1 37. Rxd1 e2 1-0
 "[..]);
         match result {
             Done(_, game) => {
@@ -556,6 +554,43 @@ two of the best players in the world over a century and a half ago.} 1-0
                 assert_eq!(game.tags[10], Tag::Other(&b"EventDate"[..], &b"1834.??.??"[..]));
                 assert_eq!(game.tags[11], Tag::Other(&b"Source"[..], &b"Everyman Chess"[..]));
                 assert_eq!(game.tags[12], Tag::Other(&b"SourceDate"[..], &b"2015.02.28"[..]));
+            },
+            Error(e) => {
+                println!("Error!: {:?}", e);
+                assert!(false);
+            },
+            Incomplete(_) => {
+                println!("Incomplete!");
+                assert!(false);
+            }
+        }
+    }
+    #[test]
+    fn test_game_3() {
+        let result = game(&b"[Event \"?\"]
+[Site \"?\"]
+[Date \"????.??.??\"]
+[Round \"?\"]
+[White \"Pawn Structure 1\"]
+[Black \"?\"]
+[Result \"*\"]
+[Annotator \"Tony Rotella\"]
+[SetUp \"1\"]
+
+{Lorem Ipsum} 1. -- {Dolor.} *
+"[..]);
+        match result {
+            Done(_, game) => {
+
+                assert_eq!(game.tags[0], Tag::Event(&b"?"[..]));
+                assert_eq!(game.tags[1], Tag::Site(&b"?"[..]));
+                assert_eq!(game.tags[2], Tag::Date(&b"????.??.??"[..]));
+                assert_eq!(game.tags[3], Tag::Round(&b"?"[..]));
+                assert_eq!(game.tags[4], Tag::White(&b"Pawn Structure 1"[..]));
+                assert_eq!(game.tags[5], Tag::Black(&b"?"[..]));
+                assert_eq!(game.tags[6], Tag::Result(&b"*"[..]));
+                assert_eq!(game.tags[7], Tag::Other(&b"Annotator"[..], &b"Tony Rotella"[..]));
+                assert_eq!(game.tags[8], Tag::Other(&b"SetUp"[..], &b"1"[..]));
             },
             Error(e) => {
                 println!("Error!: {:?}", e);
