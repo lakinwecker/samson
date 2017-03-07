@@ -38,4 +38,5 @@ extern crate nom;
 pub mod types;
 pub mod parser;
 pub mod bitboard;
+pub mod position;
 pub mod game;

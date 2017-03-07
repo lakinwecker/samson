@@ -19,6 +19,7 @@
 
 use super::types::*;
 use std::ops::*;
+use std::cmp::{max};
 
 // De Bruijn sequences. See chessprogramming.wikispaces.com/BitScan
 pub const DEBRUIJN_64: u64 = 0x3F79D71B4CB0A89u64;
@@ -80,8 +81,18 @@ lazy_static! {
         }
         popcnt_16
     };
-    /*pub static ref SQUARE_DISTANCE: &'static [[i32; SQUARE_NB]; SQUARE_NB] = {
-
+    /// TODO: this is an optimization anyways.
+    /*
+    pub static ref SQUARE_DISTANCE: &'static [[i32; SQUARE_NB]; SQUARE_NB] = {
+        let mut square_distance = [[0; SQUARE_NB]; SQUARE_NB];
+        for s1 in (SQ_A1.0)..(SQ_H8.0) {
+            for s2 in (SQ_A1.0)..(SQ_H8.0) {
+                if s1 != s2 {
+                    square_distance[s1][s2] = max();
+                }
+            }
+        }
+        square_distance
     };*/
     pub static ref SQUARE_BB: [Bitboard; 64] = {
         let mut square_bb = [Bitboard(0); 64];

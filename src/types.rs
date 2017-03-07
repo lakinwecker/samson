@@ -1,6 +1,9 @@
 // samson - An engine focused on teaching humans.
 // 
-// Copyright (C) 2017 Lakin Wecker <lakin@wecker.ca>
+// Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+// Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad (Stockfish Authors)
+// Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad (Stockfish Authors)
+// Copyright (C) 2017 Lakin Wecker 
 // 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,7 +19,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::ops::*;
-
 
 // New types don't inherit traits from their contained attribute type
 // which is a good thing. But in this case we want to allow our types
@@ -195,6 +197,7 @@ const_vals! { Color:
     NO_COLOR = 2,
     COLOR_NB = 2
 }
+pub const COLOR_NB_USIZE: usize = 2;
 impl Neg for Color {
     type Output = Color;
     fn neg(self) -> Color { Color(self.0 ^ BLACK.0) }
@@ -209,6 +212,7 @@ const_vals! { CastlingSide:
     QUEEN_SIDE = 1,
     CASTLING_SIDE_NB = 2
 }
+pub const CASTLING_SIDE_NB_USIZE: usize = 2;
 impl BitOr<Color> for CastlingSide {
     type Output = CastlingRight;
     fn bitor(self, c: Color) -> CastlingRight {
@@ -232,6 +236,7 @@ const_vals! { CastlingRight:
     ANY_CASTLING = WHITE_OO.0 | WHITE_OOO.0 | BLACK_OO.0 | BLACK_OOO.0,
     CASTLING_RIGHT_NB = 16
 }
+pub const CASTLING_RIGHT_NB_USIZE: usize = 16;
 
 
 // TODO: MakeCastling
@@ -254,6 +259,7 @@ const_vals! { Phase:
     EG = 1,
     PHASE_NB = 2
 }
+pub const PHASE_NB_USIZE: usize = 2;
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
@@ -330,6 +336,7 @@ const_vals! { PieceType:
     ALL_PIECES = 0,
     PIECE_TYPE_NB = 8
 }
+pub const PIECE_TYPE_NB_USIZE: usize = 8;
 
 ///-----------------------------------------------------------------------------
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
@@ -342,6 +349,7 @@ const_vals! { Piece:
     B_PAWN = 9, B_KNIGHT = 10, B_BISHOP = 11, B_ROOK = 12, B_QUEEN = 13, B_KING = 14,
     PIECE_NB = 16
 }
+pub const PIECE_NB_USIZE: usize = 16;
 
 impl Neg for Piece {
     type Output = Piece;
@@ -399,6 +407,7 @@ const_vals! { Square:
     SOUTH_WEST = SOUTH.0 + WEST.0,
     NORTH_WEST = NORTH.0 + WEST.0
 }
+pub const SQUARE_NB_USIZE: usize = 64;
 
 impl Neg for Square {
     type Output = Square;
@@ -425,6 +434,7 @@ enable_signed_operators_on! { File }
 const_vals! { File:
     FILE_A=0, FILE_B=1, FILE_C=2, FILE_D=3, FILE_E=4, FILE_F=5, FILE_G=6, FILE_H=7, FILE_NB=8
 }
+pub const FILE_NB_USIZE: usize = 8;
 pub static FILES: &'static [File] = &[ FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H ];
 
 ///-----------------------------------------------------------------------------
@@ -436,6 +446,7 @@ enable_signed_operators_on! { Rank }
 const_vals! { Rank:
     RANK_1=0, RANK_2=1, RANK_3=2, RANK_4=3, RANK_5=4, RANK_6=5, RANK_7=6, RANK_8=7, RANK_NB=8
 }
+pub const RANK_NB_USIZE: usize = 8;
 pub static RANKS: &'static [Rank] = &[ RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8 ];
 
 ///-----------------------------------------------------------------------------
