@@ -22,6 +22,7 @@
 use super::super::types::*;
 use nom::*;
 use parser::san;
+use parser::bom;
 
 use std::str;
 use std::str::FromStr;
@@ -308,7 +309,9 @@ named!(pub game<Game>,
         }
     )
 );
-named!(pub pgn<Vec<Game> >, many0!(game));
+named!(pub pgn<Vec<Game> >,
+    do_parse!(opt!(bom::utf_8_bom) >> games: many0!(game) >> (games))
+);
 
 #[cfg(test)]
 mod tests {
@@ -320,6 +323,7 @@ mod tests {
     fn test_parse_string() {
         assert_eq!(Done(&b""[..], &b"aaaaaaa"[..]), string_token(b"\"aaaaaaa\""));
         assert_eq!(Done(&b""[..], &b"aaaaaaa \\\" aaaaaaa"[..]), string_token(b"\"aaaaaaa \\\" aaaaaaa\""));
+        assert_eq!(Done(&b""[..], &b"GER/CCM-E/01-C (GER)"[..]), string_token(b"\"GER/CCM-E/01-C (GER)\""));
     }
     #[test]
     fn test_integer_token() {
@@ -349,7 +353,7 @@ mod tests {
     fn test_nag_token() {
         assert_eq!(Done(&b""[..], NumericAnnotationGlyph(4u64)), nag_token(b"$4"));
         assert_eq!(Done(&b"ef"[..], NumericAnnotationGlyph(4u64)), nag_token(b"$4ef"));
-    }
+}
     #[test]
     fn test_symbol_token() {
         assert_eq!(Done(&b""[..], &b"sasd#_+#=:-"[..]), symbol_token(b"sasd#_+#=:-"));
@@ -591,6 +595,48 @@ Rg8 35. Rd1 e3 36. Qc3 Qxd1 37. Rxd1 e2 1-0
                 assert_eq!(game.tags[6], Tag::Result(&b"*"[..]));
                 assert_eq!(game.tags[7], Tag::Other(&b"Annotator"[..], &b"Tony Rotella"[..]));
                 assert_eq!(game.tags[8], Tag::Other(&b"SetUp"[..], &b"1"[..]));
+            },
+            Error(e) => {
+                println!("Error!: {:?}", e);
+                assert!(false);
+            },
+            Incomplete(_) => {
+                println!("Incomplete!");
+                assert!(false);
+            }
+        }
+    }
+    #[test]
+    fn test_game_4() {
+        let result = game(&b"[Event \"GER/CCM-E/01-C (GER)\"]
+[Site \"ICCF\"]
+[Date \"2017.06.26\"]
+[Round \"?\"]
+[White \"Simeonov, Lyuben\"]
+[Black \"Tripp, Glenn\"]
+[Result \"1/2-1/2\"]
+[WhiteElo \"2223\"]
+[BlackElo \"2214\"]
+[PlyCount \"41\"]
+[EventDate \"2017.??.??\"]
+
+1. d4 Nf6 2. c4 g6 3. Nc3 Bg7 4. e4 d6 5. Nf3 O-O 6. Be2 e5 7. O-O Nc6 8. d5
+Ne7 9. Ne1 Nd7 10. Nd3 f5 11. Bd2 Nf6 12. f3 f4 13. Rc1 g5 14. c5 Ng6 15. Nb5
+Rf7 16. Ba5 b6 17. cxd6 cxd6 18. Be1 g4 19. Nb4 a6 20. Nc6 Qf8 21. Na3 1/2-1/2"[..]);
+        match result {
+            Done(_, game) => {
+
+                assert_eq!(game.tags[0], Tag::Event(&b"GER/CCM-E/01-C (GER)"[..]));
+                assert_eq!(game.tags[1], Tag::Site(&b"ICCF"[..]));
+                assert_eq!(game.tags[2], Tag::Date(&b"2017.06.26"[..]));
+                assert_eq!(game.tags[3], Tag::Round(&b"?"[..]));
+                assert_eq!(game.tags[4], Tag::White(&b"Simeonov, Lyuben"[..]));
+                assert_eq!(game.tags[5], Tag::Black(&b"Tripp, Glenn"[..]));
+                assert_eq!(game.tags[6], Tag::Result(&b"1/2-1/2"[..]));
+                assert_eq!(game.tags[7], Tag::Other(&b"WhiteElo"[..], &b"2223"[..]));
+                assert_eq!(game.tags[8], Tag::Other(&b"BlackElo"[..], &b"2214"[..]));
+                assert_eq!(game.tags[9], Tag::Other(&b"PlyCount"[..], &b"41"[..]));
+                assert_eq!(game.tags[10], Tag::Other(&b"EventDate"[..], &b"2017.??.??"[..]));
             },
             Error(e) => {
                 println!("Error!: {:?}", e);
