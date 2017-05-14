@@ -25,9 +25,9 @@ use super::super::types;
 
 //------------------------------------------------------------------------------
 // UCI related parsers
-named!(pub file <types::File>, chain!(
-    f: one_of!("abcdefghABCDEFGH0"),
-    || { 
+named!(pub file <types::File>, map!(
+    one_of!("abcdefghABCDEFGH0"),
+    |f| { 
         match f {
             'a' | 'A' => types::FILE_A,
             'b' | 'B' => types::FILE_B,
@@ -42,9 +42,9 @@ named!(pub file <types::File>, chain!(
         }
     }
 ));
-named!(pub rank <types::Rank>, chain!(
-    r: one_of!("123456780"),
-    || { 
+named!(pub rank <types::Rank>, map!(
+    one_of!("123456780"),
+    |r| { 
         match r {
             '1' => types::RANK_1,
             '2' => types::RANK_2,
@@ -59,33 +59,36 @@ named!(pub rank <types::Rank>, chain!(
         }
     }
 ));
-named!(pub piece <types::PieceType>, complete!(chain!(
-    p: one_of!("pnbrqkPNBRQK"),
-    || { 
-        match p {
-            'p' | 'P' => types::PAWN,
-            'n' | 'N' => types::KNIGHT,
-            'b' | 'B' => types::BISHOP,
-            'r' | 'R' => types::ROOK,
-            'q' | 'Q' => types::QUEEN,
-            'k' | 'K' => types::KING,
-            _ => types::NO_PIECE_TYPE
+named!(pub piece <types::PieceType>, complete!(
+    map!(
+        one_of!("pnbrqkPNBRQK"),
+        |p| { 
+            match p {
+                'p' | 'P' => types::PAWN,
+                'n' | 'N' => types::KNIGHT,
+                'b' | 'B' => types::BISHOP,
+                'r' | 'R' => types::ROOK,
+                'q' | 'Q' => types::QUEEN,
+                'k' | 'K' => types::KING,
+                _ => types::NO_PIECE_TYPE
+            }
+        }
+    )
+));
+
+named!(pub square <types::Square>, map!(
+    do_parse!(f: file >> r: rank >> (f, r)),
+    |(f, r)| {
+        match (f, r) {
+            (types::FILE_NB, _) | (_, types::RANK_NB) => types::SQUARE_NB,
+            _ => types::make_square(f, r)
         }
     }
-)));
+));
 
-named!(pub square <types::Square>, chain!(f: file ~ r: rank, || {
-    match (f, r) {
-        (types::FILE_NB, _) | (_, types::RANK_NB) => types::SQUARE_NB,
-        _ => types::make_square(f, r)
-    }
-}));
-
-named!(pub uci <types::Move>, chain!(
-    from: square ~
-    to: square ~
-    promotion: piece? ,
-    || {
+named!(pub uci <types::Move>, map!(
+    do_parse!(from: square >> to: square >> promotion: opt!(piece) >> (from, to, promotion)),
+    |(from, to, promotion)| {
         match (from, to) {
             (types::SQUARE_NB, _) | (_, types::SQUARE_NB) => types::MOVE_NULL,
             _ => match promotion {
