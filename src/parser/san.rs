@@ -236,7 +236,7 @@ named!(pub san_explicit_move<Node>,
 named!(pub san_null_move<Node>,
    map!(
         do_parse!(
-            tag!("--") >>
+            alt_complete!(tag!("--") | tag!("Z0") | tag!("z0")) >>
             check: opt!(complete!(san_check)) >>
             annotation: opt!(complete!(san_move_annotation)) >>
             (check, annotation)
@@ -410,5 +410,7 @@ mod tests {
         assert_eq!(Done(&b""[..], Node::CastleQueenSide(Check::Checkmate, MoveAnnotation::Brilliant)), san_move(&b"O-O-O#!!"[..]));
 
         assert_eq!(Done(&b""[..], Node::NullMove(Check::Checkmate, MoveAnnotation::Brilliant)), san_move(&b"--#!!"[..]));
+        assert_eq!(Done(&b""[..], Node::NullMove(Check::Checkmate, MoveAnnotation::Brilliant)), san_move(&b"Z0#!!"[..]));
+        assert_eq!(Done(&b""[..], Node::NullMove(Check::Checkmate, MoveAnnotation::Brilliant)), san_move(&b"z0#!!"[..]));
     }
 }
