@@ -98,7 +98,7 @@ pub struct Game<'a> {
 named!(pub string_token, delimited!(char!('"'), escaped!(is_not!("\\\""), '\\', one_of!("\"\\")), char!('"')));
 
 ///-------------------------------------------------------------------------------------------------
-named!(pub integer_token<u64>, map_res!(map_res!(ws!(digit), str::from_utf8), FromStr::from_str));
+named!(pub integer_token<u64>, map_res!(map_res!(digit, str::from_utf8), FromStr::from_str));
 
 ///-------------------------------------------------------------------------------------------------
 named!(pub period_token, tag!("."));
@@ -568,6 +568,53 @@ Rf7 16. Ba5 b6 17. cxd6 cxd6 18. Be1 g4 19. Nb4 a6 20. Nc6 Qf8 21. Na3 1/2-1/2"[
                 assert_eq!(game.tags[8], Tag::Other(&b"BlackElo"[..], &b"2214"[..]));
                 assert_eq!(game.tags[9], Tag::Other(&b"PlyCount"[..], &b"41"[..]));
                 assert_eq!(game.tags[10], Tag::Other(&b"EventDate"[..], &b"2017.??.??"[..]));
+            },
+            Error(e) => {
+                println!("Error!: {:?}", e);
+                assert!(false);
+            },
+            Incomplete(_) => {
+                println!("Incomplete!");
+                assert!(false);
+            }
+        }
+    }
+
+    fn test_game_5() {
+        let result = game(&b"[Event \"World Senior Teams +50\"]
+[Site \"Radebeul GER\"]
+[Date \"2016.07.03\"]
+[Round \"8.2\"]
+[White \"Anastasian, A.\"]
+[Black \"Lewis, An\"]
+[Result \"1-0\"]
+[ECO \"E90\"]
+[WhiteElo \"2532\"]
+[BlackElo \"2269\"]
+[PlyCount \"84\"]
+[EventDate \"2016.06.26\"]
+
+1. d4 Nf6 2. c4 g6 3. Nc3 Bg7 4. e4 d6 5. Nf3 O-O 6. h3 e5 7. d5 Na6 8. Be3 Nh5
+9. Nh2 Qe8 10. Be2 Nf4 11. Bf3 f5 12. a3 Nc5 13. Bxc5 dxc5 14. O-O Qe7 15. Re1
+a6 16. Ne2 Qd6 17. Nf1 Bd7 18. Rb1 b6 19. Nd2 Bh6 20. Nxf4 Bxf4 21. b4 Rae8 22.
+Qc2 Rf6 23. Qc3 Qf8 24. Nb3 cxb4 25. axb4 Bg5 26. Rb2 Rf7 27. Nc1 Qh6 28. Nd3
+fxe4 29. Bxe4 Bxh3 30. gxh3 Qxh3 31. Bg2 Qh4 32. Re4 Qh5 33. Rbe2 Ref8 34. c5
+Bf4 35. Nxe5 Qh2+ 36. Kf1 Rf5 37. Nf3 Qh5 38. Re7 Bh6 39. R2e5 bxc5 40. bxc5
+Rxf3 41. Bxf3 Z0 42. Ke1 Qh1+ 1-0"[..]);
+
+        match result {
+            Done(_, game) => {
+                assert_eq!(game.tags[0], Tag::Event(&b"World Senior Teams +50"[..]));
+                assert_eq!(game.tags[1], Tag::Site(&b"Radebeul GER"[..]));
+                assert_eq!(game.tags[2], Tag::Date(&b"2017.07.03"[..]));
+                assert_eq!(game.tags[3], Tag::Round(&b"8.2"[..]));
+                assert_eq!(game.tags[4], Tag::White(&b"Anastasian, A."[..]));
+                assert_eq!(game.tags[5], Tag::Black(&b"Lewis, An"[..]));
+                assert_eq!(game.tags[6], Tag::Result(&b"1-0"[..]));
+                assert_eq!(game.tags[7], Tag::Other(&b"WhiteElo"[..], &b"2532"[..]));
+                assert_eq!(game.tags[8], Tag::Other(&b"BlackElo"[..], &b"2269"[..]));
+                assert_eq!(game.tags[9], Tag::Other(&b"PlyCount"[..], &b"84"[..]));
+                assert_eq!(game.tags[10], Tag::Other(&b"EventDate"[..], &b"2016.06.26"[..]));
             },
             Error(e) => {
                 println!("Error!: {:?}", e);

@@ -18,25 +18,26 @@ use encoding::all::{ISO_8859_1, UTF_8};
 fn main() {
 
 	//let mut f = File::open("/home/lakin/Personal-Repos/samson/KillerSicilian.pgn").unwrap();
-	let mut f = File::open("/home/lakin/Personal-Repos/samson/ORNimzoandBogo.pgn").unwrap();
-	//let mut f = File::open("/home/lakin/Downloads/160118 to 170513 Lichess Update.pgn").unwrap();
+	//let mut f = File::open("/home/lakin/Personal-Repos/samson/ORNimzoandBogo.pgn").unwrap();
+	let mut f = File::open("/home/lakin/Downloads/160118 to 170513 Lichess Update.pgn").unwrap();
+	//let mut f = File::open("/home/lakin/Downloads/test.pgn").unwrap();
     let mut bom = [0u8; 3];
-    let mut isUTF_8 = false;
+    let mut is_utf_8 = false;
     f.read_exact(&mut bom).and_then(|_| { 
         if bom == [239u8, 187u8, 191u8] {
-            isUTF_8 = true;
+            is_utf_8 = true;
         } else {
-            isUTF_8 = false;
+            is_utf_8 = false;
         }
         Ok(())
     }).unwrap();
-    if !isUTF_8 {
+    if !is_utf_8 {
         f.seek(SeekFrom::Start(0));
     }
 	let mut buf = Vec::with_capacity(1024*1024*128);
     f.read_to_end(&mut buf).unwrap();
     let mut decoded;
-    if !isUTF_8 {
+    if !is_utf_8 {
         decoded = ISO_8859_1.decode(&mut buf, DecoderTrap::Strict).unwrap();
     } else {
         decoded = UTF_8.decode(&mut buf, DecoderTrap::Strict).unwrap();
