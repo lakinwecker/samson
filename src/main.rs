@@ -18,8 +18,8 @@ use encoding::all::{ISO_8859_1, UTF_8};
 fn main() {
 
 	//let mut f = File::open("/home/lakin/Personal-Repos/samson/KillerSicilian.pgn").unwrap();
-	//let mut f = File::open("/home/lakin/Personal-Repos/samson/ORNimzoandBogo.pgn").unwrap();
-	let mut f = File::open("/home/lakin/Downloads/160118 to 170513 Lichess Update.pgn").unwrap();
+	let mut f = File::open("/home/lakin/Personal-Repos/samson/ORNimzoandBogo.pgn").unwrap();
+	//let mut f = File::open("/home/lakin/Downloads/160118 to 170513 Lichess Update.pgn").unwrap();
     let mut bom = [0u8; 3];
     let mut isUTF_8 = false;
     f.read_exact(&mut bom).and_then(|_| { 
@@ -39,7 +39,7 @@ fn main() {
     if !isUTF_8 {
         decoded = ISO_8859_1.decode(&mut buf, DecoderTrap::Strict).unwrap();
     } else {
-        decoded = ISO_8859_1.decode(&mut buf, DecoderTrap::Strict).unwrap();
+        decoded = UTF_8.decode(&mut buf, DecoderTrap::Strict).unwrap();
     }
     let bytes = decoded.as_bytes();
     let games = pgn(bytes);

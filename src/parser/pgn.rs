@@ -124,115 +124,45 @@ named!(pub nag_token<NumericAnnotationGlyph>,
 );
 
 ///-------------------------------------------------------------------------------------------------
-named!(pub symbol_token, re_bytes_find!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
-
-///-------------------------------------------------------------------------------------------------
-// TODO: this is verbose and gross, but I can't figure out a better way to do it
-// without the help of the internet.
-named!(pub event_tag<Tag>, 
-    map!(
-        do_parse!(
-            ws!(open_bracket_token) >>
-            ws!(tag!("Event")) >>
-            value: ws!(string_token) >>
-            ws!(close_bracket_token) >>
-            (value)
-        ),
-        |value|{ Tag::Event(value) }
-    )
-);
-named!(pub site_tag<Tag>, 
-    map!(
-        do_parse!(
-            ws!(open_bracket_token) >>
-            ws!(tag!("Site")) >>
-            value: ws!(string_token) >>
-            ws!(close_bracket_token) >>
-            (value)
-        ),
-        |value|{ Tag::Site(value) }
-    )
-);
-named!(pub date_tag<Tag>, 
-    map!(
-        do_parse!(
-            ws!(open_bracket_token) >>
-            ws!(tag!("Date")) >>
-            value: ws!(string_token) >>
-            ws!(close_bracket_token) >>
-            (value)
-        ),
-        |value|{ Tag::Date(value) }
-    )
-);
-named!(pub round_tag<Tag>, 
-    map!(
-        do_parse!(
-            ws!(open_bracket_token) >>
-            ws!(tag!("Round")) >>
-            value: ws!(string_token) >>
-            ws!(close_bracket_token) >>
-            (value)
-        ),
-        |value|{ Tag::Round(value) }
-    )
-);
-named!(pub white_tag<Tag>, 
-    map!(
-        do_parse!(
-            ws!(open_bracket_token) >>
-            ws!(tag!("White")) >>
-            value: ws!(string_token) >>
-            ws!(close_bracket_token) >>
-            (value)
-        ),
-        |value|{ Tag::White(value) }
-    )
-);
-named!(pub black_tag<Tag>, 
-    map!(
-        do_parse!(
-            ws!(open_bracket_token) >>
-            ws!(tag!("Black")) >>
-            value: ws!(string_token) >>
-            ws!(close_bracket_token) >>
-            (value)
-        ),
-        |value|{ Tag::Black(value) }
-    )
-);
-named!(pub result_tag<Tag>, 
-    map!(
-        do_parse!(
-            ws!(open_bracket_token) >>
-            ws!(tag!("Result")) >>
-            value: ws!(string_token) >>
-            ws!(close_bracket_token) >>
-            (value)
-        ),
-        |value|{ Tag::Result(value) }
-    )
-);
-named!(pub other_tag<Tag>, 
-    map!(
-        do_parse!(
-            ws!(open_bracket_token) >>
-            key: ws!(symbol_token) >>
-            value: ws!(string_token) >>
-            ws!(close_bracket_token) >>
-            (key, value)
-        ),
-        |(key, value)| { Tag::Other(key, value) }
-    )
-);
+//named!(pub symbol_token, re_bytes_find_static!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
+named!(pub symbol_token, is_a!("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ#=:+_-"));
 
 ///-------------------------------------------------------------------------------------------------
 named!(pub tag_pair<Tag>, 
-    alt_complete!(event_tag | site_tag | date_tag | round_tag | white_tag | black_tag | result_tag | other_tag)
+    map!(
+        ws!(
+            do_parse!(
+                open_bracket_token >>
+                key: symbol_token >>
+                value: string_token >>
+                close_bracket_token >>
+                (key, value)
+            )
+        ),
+        |(key, value)| {
+            if key == &b"Event"[..] {
+                Tag::Event(value)
+            } else if key == &b"Site"[..] {
+                Tag::Site(value)
+            } else if key == &b"Date"[..] {
+                Tag::Date(value)
+            } else if key == &b"Round"[..] {
+                Tag::Round(value)
+            } else if key == &b"White"[..] {
+                Tag::White(value)
+            } else if key == &b"Black"[..] {
+                Tag::Black(value)
+            } else if key == &b"Result"[..] {
+                Tag::Result(value)
+            } else {
+                Tag::Other(key, value)
+            }
+        }
+    )
 );
 
 ///-------------------------------------------------------------------------------------------------
-named!(pub tag_list<Vec<Tag> >, many0!(ws!(tag_pair)));
+named!(pub tag_list<Vec<Tag> >, ws!(many0!(tag_pair)));
 
 ///-------------------------------------------------------------------------------------------------
 named!(pub commentary_token, delimited!(char!('{'), is_not!("}"), char!('}')));
@@ -317,6 +247,7 @@ named!(pub pgn<Vec<Game> >,
 mod tests {
 
     use super::*;
+    use test::Bencher;
     use nom::IResult::*;
 
     #[test]
@@ -647,5 +578,26 @@ Rf7 16. Ba5 b6 17. cxd6 cxd6 18. Be1 g4 19. Nb4 a6 20. Nc6 Qf8 21. Na3 1/2-1/2"[
                 assert!(false);
             }
         }
+    }
+
+    #[bench]
+    fn bench_parse_game(b: &mut Bencher) {
+        b.iter(|| {
+            let result = game(&b"[Event \"GER/CCM-E/01-C (GER)\"]
+[Site \"ICCF\"]
+[Date \"2017.06.26\"]
+[Round \"?\"]
+[White \"Simeonov, Lyuben\"]
+[Black \"Tripp, Glenn\"]
+[Result \"1/2-1/2\"]
+[WhiteElo \"2223\"]
+[BlackElo \"2214\"]
+[PlyCount \"41\"]
+[EventDate \"2017.??.??\"]
+
+1. d4 Nf6 2. c4 g6 3. Nc3 Bg7 4. e4 d6 5. Nf3 O-O 6. Be2 e5 7. O-O Nc6 8. d5
+Ne7 9. Ne1 Nd7 10. Nd3 f5 11. Bd2 Nf6 12. f3 f4 13. Rc1 g5 14. c5 Ng6 15. Nb5
+Rf7 16. Ba5 b6 17. cxd6 cxd6 18. Be1 g4 19. Nb4 a6 20. Nc6 Qf8 21. Na3 1/2-1/2"[..]);
+        });
     }
 }

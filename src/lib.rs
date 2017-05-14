@@ -24,6 +24,9 @@
 #![feature(cfg_target_feature)]
 #![feature(asm)]
 
+#![feature(test)]
+extern crate test;
+
 
 #[macro_use]
 extern crate lazy_static;
