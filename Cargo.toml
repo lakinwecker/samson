@@ -6,7 +6,7 @@ authors = ["Lakin Wecker <lakin@wecker.ca>"]
 [dependencies]
 lazy_static = "*"
 num = "*"
-regex = "0.1"
+regex = "^0.2"
 encoding = "0.2.33"
 shakmaty = { git = "https://github.com/lakinwecker/shakmaty.git" }
 

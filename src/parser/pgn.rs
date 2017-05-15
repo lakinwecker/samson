@@ -116,6 +116,9 @@ named!(pub open_parenthesis_token, tag!("("));
 named!(pub close_parenthesis_token, tag!(")"));
 
 ///-------------------------------------------------------------------------------------------------
+named!(pub whitespace, is_a!(" \t\r\n"));
+
+///-------------------------------------------------------------------------------------------------
 named!(pub escape_comment, preceded!(tag!("%"), is_not!("\n")));
 
 ///-------------------------------------------------------------------------------------------------
@@ -124,20 +127,20 @@ named!(pub nag_token<NumericAnnotationGlyph>,
 );
 
 ///-------------------------------------------------------------------------------------------------
-//named!(pub symbol_token, re_bytes_find_static!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
-named!(pub symbol_token, is_a!("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ#=:+_-"));
+named!(pub symbol_token, re_bytes_find_static!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
 
 ///-------------------------------------------------------------------------------------------------
 named!(pub tag_pair<Tag>, 
     map!(
-        ws!(
-            do_parse!(
-                open_bracket_token >>
-                key: symbol_token >>
-                value: string_token >>
-                close_bracket_token >>
-                (key, value)
-            )
+        do_parse!(
+            open_bracket_token >>
+            opt!(whitespace) >>
+            key: symbol_token >>
+            whitespace >>
+            value: string_token >>
+            opt!(whitespace) >>
+            close_bracket_token >>
+            (key, value)
         ),
         |(key, value)| {
             if key == &b"Event"[..] {
@@ -180,10 +183,10 @@ named!(pub game_result<Result>,
 ///-------------------------------------------------------------------------------------------------
 named!(pub game_node<Node>,
     alt_complete!(
-        map!(ws!(open_parenthesis_token), |_| { Node::StartVariation }) |
-        map!(ws!(close_parenthesis_token), |_| { Node::EndVariation }) |
-        map!(ws!(nag_token), |n| { Node::Nag(n) }) |
-        map!(ws!(commentary_token), |c| { Node::Comment(c) }) |
+        map!(open_parenthesis_token, |_| { Node::StartVariation }) |
+        map!(close_parenthesis_token, |_| { Node::EndVariation }) |
+        map!(nag_token, |n| { Node::Nag(n) }) |
+        map!(commentary_token, |c| { Node::Comment(c) }) |
         map!(
             do_parse!(
                 num: ws!(complete!(integer_token)) >>
@@ -207,15 +210,15 @@ named!(pub game_node<Node>,
                 )
             }
         ) |
-        map!(ws!(complete!(san::san_move)), |x| { Node::Move(x) })
+        map!(complete!(san::san_move), |x| { Node::Move(x) })
     )
 );
 
 ///-------------------------------------------------------------------------------------------------
-named!(pub game_node_list<Vec<Node> >, many1!(game_node));
+named!(pub game_node_list<Vec<Node> >, many1!(ws!(game_node)));
 
 ///-------------------------------------------------------------------------------------------------
-named!(pub game_node_list_with_result<(Vec<Node>, Result)>, many_till!(game_node, game_result));
+named!(pub game_node_list_with_result<(Vec<Node>, Result)>, many_till!(ws!(game_node), ws!(game_result)));
 
 // TODO: find a more elegant way to deal with the silly escape comments.
 //       Q: Why does pgn have such ambiguous rules. So can an escape comment
