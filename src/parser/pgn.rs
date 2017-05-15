@@ -170,10 +170,10 @@ named!(pub commentary_token, delimited!(char!('{'), is_not!("}"), char!('}')));
 ///-------------------------------------------------------------------------------------------------
 named!(pub game_result<Result>,
     alt_complete!(
-        map!(ws!(tag!("1-0")), |_| { Result::WhiteWin }) |
-        map!(ws!(tag!("0-1")), |_| { Result::BlackWin }) |
-        map!(ws!(tag!("1/2-1/2")), |_| { Result::Draw }) |
-        map!(ws!(tag!("*")), |_| { Result::Other })
+        map!(tag!("1-0"), |_| { Result::WhiteWin }) |
+        map!(tag!("0-1"), |_| { Result::BlackWin }) |
+        map!(tag!("1/2-1/2"), |_| { Result::Draw }) |
+        map!(tag!("*"), |_| { Result::Other })
     )
 );
 
@@ -313,11 +313,6 @@ mod tests {
         assert_eq!(Done(&b""[..], Result::BlackWin), game_result(b"0-1"));
         assert_eq!(Done(&b""[..], Result::Draw), game_result(b"1/2-1/2"));
         assert_eq!(Done(&b""[..], Result::Other), game_result(b"*"));
-
-        assert_eq!(Done(&b""[..], Result::WhiteWin), game_result(b" 1-0 "));
-        assert_eq!(Done(&b""[..], Result::BlackWin), game_result(b" 0-1 "));
-        assert_eq!(Done(&b""[..], Result::Draw), game_result(b" 1/2-1/2 "));
-        assert_eq!(Done(&b""[..], Result::Other), game_result(b" * "));
     }
     #[test]
     fn test_game_node() {
