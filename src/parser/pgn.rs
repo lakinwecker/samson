@@ -123,8 +123,7 @@ named!(pub escape_comment, preceded!(tag!("%"), is_not!("\n")));
 
 ///-------------------------------------------------------------------------------------------------
 named!(pub nag_token<NumericAnnotationGlyph>,
-    map!(preceded!(char!('$'), integer_token), |i| { NumericAnnotationGlyph(i) })
-);
+    map!(preceded!(char!('$'), integer_token), |i| { NumericAnnotationGlyph(i) }));
 
 ///-------------------------------------------------------------------------------------------------
 named!(pub symbol_token, re_bytes_find_static!(r"[[:alnum:]]{1}[0-9A-Za-z#=:+_-]*"));
@@ -173,10 +172,10 @@ named!(pub commentary_token, delimited!(char!('{'), is_not!("}"), char!('}')));
 ///-------------------------------------------------------------------------------------------------
 named!(pub game_result<Result>,
     alt_complete!(
-        map!(tag!("1-0"), |_| { Result::WhiteWin }) |
+        map!(tag!("*"), |_| { Result::Other }) |
         map!(tag!("0-1"), |_| { Result::BlackWin }) |
-        map!(tag!("1/2-1/2"), |_| { Result::Draw }) |
-        map!(tag!("*"), |_| { Result::Other })
+        map!(tag!("1-0"), |_| { Result::WhiteWin }) |
+        map!(tag!("1/2-1/2"), |_| { Result::Draw })
     )
 );
 
