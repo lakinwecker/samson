@@ -186,6 +186,56 @@ named!(pub san_square<Square>,
 );
 
 ///-----------------------------------------------------------------------------
+named!(pub pawn_move<Node>, 
+    map!(
+        do_parse!(
+            file: complete!(san_file) >>
+            rank: complete!(san_rank) >>
+            promotion: opt!(complete!(san_promotion)) >>
+            promotion_piece: opt!(complete!(san_piece)) >>
+            check: opt!(complete!(san_check)) >>
+            annotation: opt!(complete!(san_move_annotation)) >>
+            (file, rank, promotion, promotion_piece, check, annotation)
+        ) {
+            let annotation = if let Some(x) = annotation { x } else { MoveAnnotation::None };
+            let promotion = match (promotion, promotion_piece) {
+                (Some(_), Some(promotion_piece)) => Promotion::PieceType(promotion_piece),
+                _ => Promotion::None
+            };
+            Node::Move(PAWN, Source::None, capture, make_square(f, r), promotion, check, annotation)
+        }
+    )
+);
+
+///-----------------------------------------------------------------------------
+named!(pub pawn_capture<Node>, 
+    map!(
+        do_parse!(
+            file: complete!(san_file) >>
+            rank: complete!(san_rank) >>
+            (file, rank)
+        ) {
+            Node::Move(PAWN, Source::None, capture, make_square(f, r), promotion, check, annotation)
+        }
+    )
+);
+
+///-----------------------------------------------------------------------------
+named!(pub piece_move<Node>, 
+    map!(
+        do_parse!(
+            piece: complete!(san_file) >>
+            file: complete!(san_file) >>
+            rank: complete!(san_rank) >>
+            (piece, file, rank)
+        ) {
+            Node::Move(piece, Source::None, capture, make_square(f, r), promotion, check, annotation)
+        }
+    )
+);
+
+
+///-----------------------------------------------------------------------------
 named!(pub san_explicit_move<Node>, 
     map!(
         do_parse!(
@@ -286,10 +336,10 @@ named!(pub san_castle_queen_side<Node>,
 
 ///-----------------------------------------------------------------------------
 named!(pub san_move<Node>, alt_complete!(
-    san_castle_queen_side |
+    san_explicit_move |
     san_castle_king_side |
-    san_null_move |
-    san_explicit_move
+    san_castle_queen_side |
+    san_null_move
 ));
 
 #[cfg(test)]
