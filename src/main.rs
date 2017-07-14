@@ -19,10 +19,10 @@ use encoding::all::{ISO_8859_1, UTF_8};
 fn main() {
 
 	//let mut f = File::open("/home/lakin/Personal-Repos/samson/KillerSicilian.pgn").unwrap();
-	//let mut f = File::open("/home/lakin/Personal-Repos/samson/ORNimzoandBogo.pgn").unwrap();
+	let mut f = File::open("/home/lakin/Personal-Repos/samson/ORNimzoandBogo.pgn").unwrap();
 	//let mut f = File::open("/home/lakin/Personal-Repos/samson/simple.pgn").unwrap();
-	let mut f = File::open("/home/lakin/Downloads/160118 to 170513 Lichess Update.pgn").unwrap();
-	//let mut f = File::open("/home/lakin/Downloads/test.pgn").unwrap();
+	//let mut f = File::open("/home/lakin/Downloads/160118 to 170513 Lichess Update.pgn").unwrap();
+	//let mut f = File::open("/home/lakin/Personal-Repos/samson/test.pgn").unwrap();
     let mut bom = [0u8; 3];
     let mut is_utf_8 = false;
     f.read_exact(&mut bom).and_then(|_| { 

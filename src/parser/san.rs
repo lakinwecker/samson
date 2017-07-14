@@ -77,12 +77,12 @@ named!(pub san_piece<PieceType>,
         one_of!("PNBRQKpnbrqk"),
         |c: char| {
             match c {
-                'p' | 'P' => PAWN,
-                'n' | 'N' => KNIGHT,
-                'b' | 'B' => BISHOP,
-                'r' | 'R' => ROOK,
-                'q' | 'Q' => QUEEN,
-                'k' | 'K' => KING,
+                'P' => PAWN,
+                'N' => KNIGHT,
+                'B' => BISHOP,
+                'R' => ROOK,
+                'Q' => QUEEN,
+                'K' => KING,
                 _ => PIECE_TYPE_NB // This should never happen because of above.
             }
         }
@@ -185,6 +185,54 @@ named!(pub san_square<Square>,
         (make_square(file, rank))
     )
 );
+
+///-----------------------------------------------------------------------------
+named!(whitespace<char>, one_of!(" \r\n\t"));
+
+///-----------------------------------------------------------------------------
+named!(pub san_pawn_move_bare<Node>, 
+    map!(
+        do_parse!(
+            square: complete!(san_square) >>
+            whitespace >>
+            (square)
+        ),
+        |square| {
+            Node::Move(
+                PAWN,
+                Source::None,
+                MoveOrCapture::Move,
+                square,
+                Promotion::None,
+                Check::None, MoveAnnotation::None
+            )
+        }
+    )
+);
+
+///-----------------------------------------------------------------------------
+named!(pub san_pawn_capture_bare<Node>, 
+    map!(
+        do_parse!(
+            file: complete!(san_file) >>
+            capture: complete!(san_capture) >>
+            square: complete!(san_square) >>
+            whitespace >>
+            (file, capture, square)
+        ),
+        |(file, capture, square)| {
+            Node::Move(
+                PAWN,
+                Source::File(file),
+                capture,
+                square,
+                Promotion::None,
+                Check::None, MoveAnnotation::None
+            )
+        }
+    )
+);
+
 ///-----------------------------------------------------------------------------
 named!(pub san_pawn_move<Node>, 
     map!(
@@ -235,6 +283,21 @@ named!(pub san_pawn_capture<Node>,
 );
 
 ///-----------------------------------------------------------------------------
+named!(pub san_piece_move_bare<Node>, 
+    map!(
+        do_parse!(
+            piece: complete!(san_piece) >>
+            square: complete!(san_square) >>
+            whitespace >>
+            (piece, square)
+        ),
+        |(piece, square)| {
+            Node::Move(piece, Source::None, MoveOrCapture::Move, square, Promotion::None, Check::None, MoveAnnotation::None)
+        }
+    )
+);
+
+///-----------------------------------------------------------------------------
 named!(pub san_piece_move<Node>, 
     map!(
         do_parse!(
@@ -243,36 +306,29 @@ named!(pub san_piece_move<Node>,
             rank: opt!(complete!(san_rank)) >>
             capture: opt!(complete!(san_capture)) >>
             square: opt!(complete!(san_square)) >>
-            promotion: opt!(complete!(san_promotion)) >>
-            promotion_piece: opt!(complete!(san_piece)) >>
             check: opt!(complete!(san_check)) >>
             annotation: opt!(complete!(san_move_annotation)) >>
-            (piece, file, rank, capture, square, promotion, promotion_piece, check, annotation)
+            (piece, file, rank, capture, square, check, annotation)
         ),
-        |(piece, file, rank, capture, square, promotion, promotion_piece, check, annotation)| {
+        |(piece, file, rank, capture, square, check, annotation)| {
             let capture = if let Some(x) = capture { x } else { MoveOrCapture::Move };
             let check = if let Some(x) = check { x } else { Check::None };
             let annotation = if let Some(x) = annotation { x } else { MoveAnnotation::None };
-            let promotion = match (promotion, promotion_piece) {
-                (Some(_), Some(promotion_piece)) => Promotion::PieceType(promotion_piece),
-                _ => Promotion::None
-            };
-
             match (file, rank, square) {
                 (Some(f), Some(r), None) => {
-                    Node::Move(piece, Source::None, capture, make_square(f, r), promotion, check, annotation)
+                    Node::Move(piece, Source::None, capture, make_square(f, r), Promotion::None, check, annotation)
                 },
                 (None, None, Some(square)) => {
-                    Node::Move(piece, Source::None, capture, square, promotion, check, annotation)
+                    Node::Move(piece, Source::None, capture, square, Promotion::None, check, annotation)
                 },
                 (Some(f), None, Some(square)) => {
-                    Node::Move(piece, Source::File(f), capture, square, promotion, check, annotation)
+                    Node::Move(piece, Source::File(f), capture, square, Promotion::None, check, annotation)
                 },
                 (None, Some(r), Some(square)) => {
-                    Node::Move(piece, Source::Rank(r), capture, square, promotion, check, annotation)
+                    Node::Move(piece, Source::Rank(r), capture, square, Promotion::None, check, annotation)
                 },
                 (Some(f), Some(r), Some(square)) => {
-                    Node::Move(piece, Source::Square(make_square(f, r)), capture, square, promotion, check, annotation)
+                    Node::Move(piece, Source::Square(make_square(f, r)), capture, square, Promotion::None, check, annotation)
                 },
                 _ => Node::InvalidMove
             }
@@ -282,7 +338,14 @@ named!(pub san_piece_move<Node>,
 
 ///-----------------------------------------------------------------------------
 named!(pub san_explicit_move<Node>, 
-    alt_complete!(san_pawn_move | san_piece_move | san_pawn_capture)
+    alt_complete!(
+        san_pawn_move_bare |
+        san_piece_move_bare |
+        san_pawn_capture_bare |
+        san_pawn_move |
+        san_piece_move |
+        san_pawn_capture
+    )
 );
 
 ///-----------------------------------------------------------------------------
@@ -353,17 +416,11 @@ mod tests {
 
     #[test]
     fn test_san_piece() {
-        assert_eq!(Done(&b""[..], PAWN), san_piece(&b"p"[..]));
         assert_eq!(Done(&b""[..], PAWN), san_piece(&b"P"[..]));
-        assert_eq!(Done(&b""[..], KNIGHT), san_piece(&b"n"[..]));
         assert_eq!(Done(&b""[..], KNIGHT), san_piece(&b"N"[..]));
-        assert_eq!(Done(&b""[..], BISHOP), san_piece(&b"b"[..]));
         assert_eq!(Done(&b""[..], BISHOP), san_piece(&b"B"[..]));
-        assert_eq!(Done(&b""[..], ROOK), san_piece(&b"r"[..]));
         assert_eq!(Done(&b""[..], ROOK), san_piece(&b"R"[..]));
-        assert_eq!(Done(&b""[..], QUEEN), san_piece(&b"q"[..]));
         assert_eq!(Done(&b""[..], QUEEN), san_piece(&b"Q"[..]));
-        assert_eq!(Done(&b""[..], KING), san_piece(&b"k"[..]));
         assert_eq!(Done(&b""[..], KING), san_piece(&b"K"[..]));
     }
 
@@ -408,6 +465,10 @@ mod tests {
         assert_eq!(Done(&b""[..], SQ_H8), san_square(&b"h8"[..]));
         assert_eq!(Done(&b""[..], SQ_H8), san_square(&b"H8"[..]));
         assert_eq!(Done(&b""[..], SQ_E4), san_square(&b"e4"[..]));
+    }
+    #[test]
+    fn test_san_pawn_capture() {
+        assert_eq!(Done(&b""[..], Node::Move(PAWN, Source::File(FILE_B), MoveOrCapture::Capture, SQ_C1, Promotion::PieceType(ROOK), Check::Check, MoveAnnotation::None)), san_pawn_capture(&b"bxc1=R+"[..]));
     }
     #[test]
     fn test_san_move_parsing() {
