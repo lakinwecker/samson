@@ -77,12 +77,12 @@ named!(pub san_piece<PieceType>,
         one_of!("PNBRQKpnbrqk"),
         |c: char| {
             match c {
-                'p'| 'P' => PAWN,
-                'n'| 'N' => KNIGHT,
-                'b'| 'B' => BISHOP,
-                'r'| 'R' => ROOK,
-                'q'| 'Q' => QUEEN,
-                'k'| 'K' => KING,
+                'p' | 'P' => PAWN,
+                'n' | 'N' => KNIGHT,
+                'b' | 'B' => BISHOP,
+                'r' | 'R' => ROOK,
+                'q' | 'Q' => QUEEN,
+                'k' | 'K' => KING,
                 _ => PIECE_TYPE_NB // This should never happen because of above.
             }
         }
@@ -94,19 +94,40 @@ named!(pub san_file<File>,
         one_of!("abcdefghABCDEFGH"),
         |c: char| {
             match c {
-                'a'| 'A' => FILE_A,
-                'b'| 'B' => FILE_B,
-                'c'| 'C' => FILE_C,
-                'd'| 'D' => FILE_D,
-                'e'| 'E' => FILE_E,
-                'f'| 'F' => FILE_F,
-                'g'| 'G' => FILE_G,
-                'h'| 'H' => FILE_H,
+                'a' | 'A' => FILE_A,
+                'b' | 'B' => FILE_B,
+                'c' | 'C' => FILE_C,
+                'd' | 'D' => FILE_D,
+                'e' | 'E' => FILE_E,
+                'f' | 'F' => FILE_F,
+                'g' | 'G' => FILE_G,
+                'h' | 'H' => FILE_H,
                 _ => FILE_NB // This should never happen because of above.
             }
         }
     )
 );
+
+///-----------------------------------------------------------------------------
+named!(pub san_rank<Rank>, 
+    map!(
+        one_of!("12345678"),
+        |c: char| {
+            match c {
+                '1' => RANK_1,
+                '2' => RANK_2,
+                '3' => RANK_3,
+                '4' => RANK_4,
+                '5' => RANK_5,
+                '6' => RANK_6,
+                '7' => RANK_7,
+                '8' => RANK_8,
+                _ => RANK_NB // This should never happen because of above.
+            }
+        }
+    )
+);
+
 
 ///-----------------------------------------------------------------------------
 named!(pub san_capture<MoveOrCapture>,
@@ -157,26 +178,6 @@ named!(pub san_move_annotation<MoveAnnotation>,
 );
 
 ///-----------------------------------------------------------------------------
-named!(pub san_rank<Rank>, 
-    map!(
-        one_of!("12345678"),
-        |c: char| {
-            match c {
-                '1' => RANK_1,
-                '2' => RANK_2,
-                '3' => RANK_3,
-                '4' => RANK_4,
-                '5' => RANK_5,
-                '6' => RANK_6,
-                '7' => RANK_7,
-                '8' => RANK_8,
-                _ => RANK_NB // This should never happen because of above.
-            }
-        }
-    )
-);
-
-///-----------------------------------------------------------------------------
 named!(pub san_square<Square>, 
     do_parse!(
         file: san_file >>
@@ -184,12 +185,60 @@ named!(pub san_square<Square>,
         (make_square(file, rank))
     )
 );
-
 ///-----------------------------------------------------------------------------
-named!(pub san_explicit_move<Node>, 
+named!(pub san_pawn_move<Node>, 
     map!(
         do_parse!(
-            piece: opt!(complete!(san_piece)) >>
+            square: complete!(san_square) >>
+            promotion: opt!(complete!(san_promotion)) >>
+            promotion_piece: opt!(complete!(san_piece)) >>
+            check: opt!(complete!(san_check)) >>
+            annotation: opt!(complete!(san_move_annotation)) >>
+            (square, promotion, promotion_piece, check, annotation)
+        ),
+        |(square, promotion, promotion_piece, check, annotation)| {
+            let check = if let Some(x) = check { x } else { Check::None };
+            let annotation = if let Some(x) = annotation { x } else { MoveAnnotation::None };
+            let promotion = match (promotion, promotion_piece) {
+                (Some(_), Some(promotion_piece)) => Promotion::PieceType(promotion_piece),
+                _ => Promotion::None
+            };
+            Node::Move(PAWN, Source::None, MoveOrCapture::Move, square, promotion, check, annotation)
+        }
+    )
+);
+
+///-----------------------------------------------------------------------------
+named!(pub san_pawn_capture<Node>, 
+    map!(
+        do_parse!(
+            file: complete!(san_file) >>
+            capture: complete!(san_capture) >>
+            square: complete!(san_square) >>
+            promotion: opt!(complete!(san_promotion)) >>
+            promotion_piece: opt!(complete!(san_piece)) >>
+            check: opt!(complete!(san_check)) >>
+            annotation: opt!(complete!(san_move_annotation)) >>
+            (file, capture, square, promotion, promotion_piece, check, annotation)
+        ),
+        |(file, capture, square, promotion, promotion_piece, check, annotation)| {
+            let source = Source::File(file);
+            let check = if let Some(x) = check { x } else { Check::None };
+            let annotation = if let Some(x) = annotation { x } else { MoveAnnotation::None };
+            let promotion = match (promotion, promotion_piece) {
+                (Some(_), Some(promotion_piece)) => Promotion::PieceType(promotion_piece),
+                _ => Promotion::None
+            };
+            Node::Move(PAWN, source, capture, square, promotion, check, annotation)
+        }
+    )
+);
+
+///-----------------------------------------------------------------------------
+named!(pub san_piece_move<Node>, 
+    map!(
+        do_parse!(
+            piece: complete!(san_piece) >>
             file: opt!(complete!(san_file)) >>
             rank: opt!(complete!(san_rank)) >>
             capture: opt!(complete!(san_capture)) >>
@@ -201,7 +250,6 @@ named!(pub san_explicit_move<Node>,
             (piece, file, rank, capture, square, promotion, promotion_piece, check, annotation)
         ),
         |(piece, file, rank, capture, square, promotion, promotion_piece, check, annotation)| {
-            let piece = if let Some(x) = piece { x } else { PAWN };
             let capture = if let Some(x) = capture { x } else { MoveOrCapture::Move };
             let check = if let Some(x) = check { x } else { Check::None };
             let annotation = if let Some(x) = annotation { x } else { MoveAnnotation::None };
@@ -230,6 +278,11 @@ named!(pub san_explicit_move<Node>,
             }
         }
     )
+);
+
+///-----------------------------------------------------------------------------
+named!(pub san_explicit_move<Node>, 
+    alt_complete!(san_pawn_move | san_piece_move | san_pawn_capture)
 );
 
 ///-----------------------------------------------------------------------------
@@ -286,10 +339,10 @@ named!(pub san_castle_queen_side<Node>,
 
 ///-----------------------------------------------------------------------------
 named!(pub san_move<Node>, alt_complete!(
+    san_explicit_move |
     san_castle_queen_side |
     san_castle_king_side |
-    san_null_move |
-    san_explicit_move
+    san_null_move
 ));
 
 #[cfg(test)]
@@ -354,6 +407,7 @@ mod tests {
         assert_eq!(Done(&b""[..], SQ_H1), san_square(&b"H1"[..]));
         assert_eq!(Done(&b""[..], SQ_H8), san_square(&b"h8"[..]));
         assert_eq!(Done(&b""[..], SQ_H8), san_square(&b"H8"[..]));
+        assert_eq!(Done(&b""[..], SQ_E4), san_square(&b"e4"[..]));
     }
     #[test]
     fn test_san_move_parsing() {

@@ -9,6 +9,7 @@ use std::vec::Vec;
 use std::str;
 
 use samson::parser::pgn::*;
+use samson::parser::san::*;
 use nom::IResult::*;
 use nom::Slice;
 
@@ -18,8 +19,9 @@ use encoding::all::{ISO_8859_1, UTF_8};
 fn main() {
 
 	//let mut f = File::open("/home/lakin/Personal-Repos/samson/KillerSicilian.pgn").unwrap();
-	let mut f = File::open("/home/lakin/Personal-Repos/samson/ORNimzoandBogo.pgn").unwrap();
-	//let mut f = File::open("/home/lakin/Downloads/160118 to 170513 Lichess Update.pgn").unwrap();
+	//let mut f = File::open("/home/lakin/Personal-Repos/samson/ORNimzoandBogo.pgn").unwrap();
+	//let mut f = File::open("/home/lakin/Personal-Repos/samson/simple.pgn").unwrap();
+	let mut f = File::open("/home/lakin/Downloads/160118 to 170513 Lichess Update.pgn").unwrap();
 	//let mut f = File::open("/home/lakin/Downloads/test.pgn").unwrap();
     let mut bom = [0u8; 3];
     let mut is_utf_8 = false;
@@ -36,7 +38,7 @@ fn main() {
     }
 	let mut buf = Vec::with_capacity(1024*1024*128);
     f.read_to_end(&mut buf).unwrap();
-    let mut decoded;
+    let decoded;
     if !is_utf_8 {
         decoded = ISO_8859_1.decode(&mut buf, DecoderTrap::Strict).unwrap();
     } else {

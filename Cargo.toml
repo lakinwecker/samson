@@ -11,7 +11,7 @@ encoding = "0.2.33"
 shakmaty = { git = "https://github.com/lakinwecker/shakmaty.git" }
 
 [dependencies.nom]
-version = "^3.0"
+version = "^3.1"
 features = ["regexp", "regexp_macros"]
 
 [profile.dev]
