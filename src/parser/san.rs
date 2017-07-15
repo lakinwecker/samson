@@ -74,11 +74,12 @@ pub enum Node {
 ///-----------------------------------------------------------------------------
 named!(pub san_piece<PieceType>, 
     map!(
-        one_of!("PNBRQK"),
+        one_of!("PNBRQKS"),
         |c: char| {
             match c {
                 'P' => PAWN,
                 'N' => KNIGHT,
+                'S' => KNIGHT,
                 'B' => BISHOP,
                 'R' => ROOK,
                 'Q' => QUEEN,
@@ -130,6 +131,8 @@ named!(pub san_rank<Rank>,
 
 
 ///-----------------------------------------------------------------------------
+// TODO: a colon can also be used and it can appear at the end!?
+// TODO: deal with the .e.p en passant syntax!!
 named!(pub san_capture<MoveOrCapture>,
     map!(
         one_of!("x"),
@@ -143,9 +146,10 @@ named!(pub san_capture<MoveOrCapture>,
 );
 
 ///-----------------------------------------------------------------------------
-named!(pub san_promotion<char>, one_of!("="));
+named!(pub san_promotion<char>, one_of!("=/"));
 
 ///-----------------------------------------------------------------------------
+// TODO: ther eare a number of other symbols that can be used here. :/
 named!(pub san_check<Check>,
     map!(
         one_of!("+#"),
