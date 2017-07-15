@@ -74,7 +74,7 @@ pub enum Node {
 ///-----------------------------------------------------------------------------
 named!(pub san_piece<PieceType>, 
     map!(
-        one_of!("PNBRQKpnbrqk"),
+        one_of!("PNBRQK"),
         |c: char| {
             match c {
                 'P' => PAWN,
@@ -187,7 +187,7 @@ named!(pub san_square<Square>,
 );
 
 ///-----------------------------------------------------------------------------
-named!(whitespace<char>, one_of!(" \r\n\t"));
+named!(whitespace<char>, one_of!(" \n\t"));
 
 ///-----------------------------------------------------------------------------
 named!(pub san_pawn_move_bare<Node>, 
@@ -340,8 +340,8 @@ named!(pub san_piece_move<Node>,
 named!(pub san_explicit_move<Node>, 
     alt_complete!(
         san_pawn_move_bare |
-        san_piece_move_bare |
         san_pawn_capture_bare |
+        san_piece_move_bare |
         san_pawn_move |
         san_piece_move |
         san_pawn_capture
@@ -413,6 +413,7 @@ mod tests {
 
     use super::*;
     use nom::IResult::*;
+    use test::Bencher;
 
     #[test]
     fn test_san_piece() {
@@ -518,6 +519,9 @@ mod tests {
 
         assert_eq!(Done(&b""[..], Node::Move(QUEEN, Source::Square(SQ_A6), MoveOrCapture::Capture, SQ_B7, Promotion::None, Check::Checkmate, MoveAnnotation::Brilliant)), san_move(&b"Qa6xb7#!!"[..]));
 
+        assert_eq!(Done(&b""[..], Node::Move(PAWN, Source::File(FILE_E), MoveOrCapture::Capture, SQ_D1, Promotion::PieceType(ROOK), Check::Check, MoveAnnotation::Strong)), san_move(&b"exd1=R+!"[..]));
+        assert_eq!(Done(&b""[..], Node::Move(PAWN, Source::File(FILE_B), MoveOrCapture::Capture, SQ_C1, Promotion::PieceType(ROOK), Check::Check, MoveAnnotation::Strong)), san_move(&b"bxc1=R+!"[..]));
+
         assert_eq!(Done(&b""[..], Node::CastleKingSide(Check::None, MoveAnnotation::None)), san_move(&b"O-O"[..]));
         assert_eq!(Done(&b""[..], Node::CastleQueenSide(Check::None, MoveAnnotation::None)), san_move(&b"O-O-O"[..]));
 
@@ -527,5 +531,47 @@ mod tests {
         assert_eq!(Done(&b""[..], Node::NullMove(Check::Checkmate, MoveAnnotation::Brilliant)), san_move(&b"--#!!"[..]));
         assert_eq!(Done(&b""[..], Node::NullMove(Check::Checkmate, MoveAnnotation::Brilliant)), san_move(&b"Z0#!!"[..]));
         assert_eq!(Done(&b""[..], Node::NullMove(Check::Checkmate, MoveAnnotation::Brilliant)), san_move(&b"z0#!!"[..]));
+    }
+    #[bench]
+    fn bench_parse_san_move_null(b: &mut Bencher) {
+        b.iter(|| {
+            assert_eq!(Done(&b""[..], Node::NullMove(Check::Checkmate, MoveAnnotation::Brilliant)), san_move(&b"--#!!"[..]));
+        });
+    }
+    #[bench]
+    fn bench_parse_san_move_castle_queen_side(b: &mut Bencher) {
+        b.iter(|| {
+            assert_eq!(Done(&b""[..], Node::CastleQueenSide(Check::None, MoveAnnotation::None)), san_move(&b"O-O-O"[..]));
+        });
+    }
+    #[bench]
+    fn bench_parse_san_move_castle_king_side(b: &mut Bencher) {
+        b.iter(|| {
+            assert_eq!(Done(&b""[..], Node::CastleKingSide(Check::None, MoveAnnotation::None)), san_move(&b"O-O"[..]));
+        });
+    }
+    #[bench]
+    fn bench_parse_san_move_simple_capture(b: &mut Bencher) {
+        b.iter(|| {
+            assert_eq!(Done(&b""[..], Node::Move(PAWN, Source::File(FILE_B), MoveOrCapture::Capture, SQ_C2, Promotion::None, Check::None, MoveAnnotation::None)), san_move(&b"bxc2"[..]));
+        });
+    }
+    #[bench]
+    fn bench_parse_san_move_simple(b: &mut Bencher) {
+        b.iter(|| {
+            assert_eq!(Done(&b""[..], Node::Move(PAWN, Source::None, MoveOrCapture::Move, SQ_E4, Promotion::None, Check::None, MoveAnnotation::None)), san_move(&b"e4"[..]));
+        });
+    }
+    #[bench]
+    fn bench_parse_san_capture_promotion(b: &mut Bencher) {
+        b.iter(|| {
+            assert_eq!(Done(&b""[..], Node::Move(PAWN, Source::File(FILE_B), MoveOrCapture::Capture, SQ_C1, Promotion::PieceType(ROOK), Check::None, MoveAnnotation::None)), san_move(&b"bxc1=R"[..]));
+        });
+    }
+    #[bench]
+    fn bench_parse_san_move_complicated(b: &mut Bencher) {
+        b.iter(|| {
+            assert_eq!(Done(&b""[..], Node::Move(PAWN, Source::File(FILE_B), MoveOrCapture::Capture, SQ_C1, Promotion::PieceType(ROOK), Check::Check, MoveAnnotation::Strong)), san_move(&b"bxc1=R+!"[..]));
+        });
     }
 }
