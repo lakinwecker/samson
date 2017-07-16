@@ -182,10 +182,6 @@ named!(pub game_result<Result>,
 ///-------------------------------------------------------------------------------------------------
 named!(pub game_node<Node>,
     alt_complete!(
-        map!(open_parenthesis_token, |_| { Node::StartVariation }) |
-        map!(close_parenthesis_token, |_| { Node::EndVariation }) |
-        map!(nag_token, |n| { Node::Nag(n) }) |
-        map!(commentary_token, |c| { Node::Comment(c) }) |
         map!(
             do_parse!(
                 num: ws!(complete!(integer_token)) >>
@@ -209,7 +205,11 @@ named!(pub game_node<Node>,
                 )
             }
         ) |
-        map!(complete!(san::san_move), |x| { Node::Move(x) })
+        map!(complete!(san::san_move), |x| { Node::Move(x) }) |
+        map!(open_parenthesis_token, |_| { Node::StartVariation }) |
+        map!(close_parenthesis_token, |_| { Node::EndVariation }) |
+        map!(nag_token, |n| { Node::Nag(n) }) |
+        map!(commentary_token, |c| { Node::Comment(c) })
     )
 );
 
